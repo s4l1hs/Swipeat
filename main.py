@@ -44,6 +44,14 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session
 # Per project configuration, prefer `maindb.db` instead of the old `swipeat.db`.
 DATABASE_URL = os.getenv("DATABASE_URL") or "sqlite:///./maindb.db"
 
+# Demo profiles flag: if DEMO_PROFILES env var is explicitly set, respect it.
+# Otherwise, enable demo profiles automatically when running against a local
+# sqlite database (convenient for developer machines with maindb.db).
+_demo_env = os.getenv('DEMO_PROFILES')
+if _demo_env is None:
+    DEMO_PROFILES = DATABASE_URL.startswith('sqlite:')
+else:
+    DEMO_PROFILES = _demo_env.lower() in ('1', 'true', 'yes')
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
@@ -234,7 +242,7 @@ def get_next_candidates(limit: int = 20, uid: str = Depends(get_uid), db: Sessio
         # return a small set of demo food profiles so the frontend has something
         # to show during local development. This does not persist any profiles
         # to the database unless you explicitly POST /api/profiles.
-        if not candidates and os.getenv('DEMO_PROFILES', 'false').lower() in ('1', 'true', 'yes'):
+        if not candidates and DEMO_PROFILES:
             now = datetime.now(timezone.utc)
             demo = []
             foods = ['Avocado', 'Apple', 'Chicken', 'Salad', 'Banana', 'Bread']
