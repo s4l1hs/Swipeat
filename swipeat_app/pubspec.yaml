@@ -12,6 +12,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   google_fonts: ^4.0.3
+  flutter_svg: ^2.1.1
   
   shared_preferences: ^2.1.1
   sensors_plus: ^5.0.1
@@ -39,5 +40,6 @@ dev_dependencies:
 flutter:
   assets:
     - assets/images/
+    - assets/images/png/
   generate: true
   uses-material-design: true
