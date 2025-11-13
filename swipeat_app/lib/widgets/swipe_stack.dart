@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../models/profile.dart';
@@ -11,8 +12,22 @@ class SwipeStack extends StatefulWidget {
   final List<Profile> items;
   final OnSwipe onSwipe;
   final int maxVisible;
+  // Fraction of the width a card must be dragged to count as a swipe (0..1)
+  final double swipeThreshold;
+  // Multiplier applied to the raw normalized drag to compute rotation
+  final double rotationMultiplier;
+  // Maximum rotation angle (radians) to clamp rotation to
+  final double maxRotation;
 
-  const SwipeStack({required this.items, required this.onSwipe, this.maxVisible = 3, super.key});
+  const SwipeStack({
+    required this.items,
+    required this.onSwipe,
+    this.maxVisible = 3,
+    this.swipeThreshold = 0.25,
+    this.rotationMultiplier = 0.4,
+    this.maxRotation = math.pi / 6,
+    super.key,
+  });
 
   @override
   State<SwipeStack> createState() => _SwipeStackState();
@@ -25,47 +40,142 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
   // top card anim state
   Offset _offset = Offset.zero;
   double _rotation = 0.0;
-  // drag flag not needed yet
+
+  // yeni: swipe animasyonu için controller/animasyon
+  late final AnimationController _swipeController;
+  Animation<Offset>? _swipeAnimation;
+  bool _isAnimatingOut = false;
+  bool _pendingLike = false;
+  Profile? _pendingProfile;
+  bool _isReturnAnimation = false;
 
   @override
   void initState() {
     super.initState();
     items = List.of(widget.items);
+
+    // Slightly slower swipe animation for a more aesthetic feel
+    _swipeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _swipeController.addStatusListener(_onSwipeAnimStatus);
   }
 
-  void _onPanUpdate(DragUpdateDetails d) {
+  @override
+  void dispose() {
+    _swipeController.dispose();
+    // ...existing dispose code...
+    super.dispose();
+  }
+
+  void _onSwipeAnimStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      final profile = _pendingProfile;
+      final liked = _pendingLike;
+      if (!_isReturnAnimation) {
+        if (profile != null) history.add({'profile': profile, 'liked': liked});
+        setState(() {
+          if (items.isNotEmpty) items.removeLast();
+          _offset = Offset.zero;
+          _rotation = 0.0;
+          _isAnimatingOut = false;
+          _swipeAnimation = null;
+          _pendingProfile = null;
+        });
+        if (profile != null) {
+          try {
+            widget.onSwipe(profile, liked);
+          } catch (_) {}
+        }
+      } else {
+        // return-to-center finished
+        setState(() {
+          _offset = Offset.zero;
+          _rotation = 0.0;
+          _isAnimatingOut = false;
+          _swipeAnimation = null;
+          _isReturnAnimation = false;
+          _pendingProfile = null;
+        });
+      }
+    }
+  }
+
+  void _animateBackToCenter() {
+    if (_isAnimatingOut) return;
+    _isReturnAnimation = true;
+    _swipeController.duration = const Duration(milliseconds: 420);
+    _swipeAnimation = Tween<Offset>(begin: _offset, end: Offset.zero).animate(CurvedAnimation(parent: _swipeController, curve: Curves.easeOut))
+      ..addListener(() {
+        setState(() {
+          _offset = _swipeAnimation!.value;
+          final raw = _offset.dx / 300.0 * widget.rotationMultiplier;
+          _rotation = (raw.clamp(-widget.maxRotation, widget.maxRotation)).toDouble();
+        });
+      });
+    _swipeController.reset();
+    _swipeController.forward();
+  }
+
+  // yeni yardımcı: kartı animasyonla dışarı at
+  // perform a smooth swipe-out animation for the current top card
+  void _performSwipeAnim(Profile top, bool liked) {
+    if (_isAnimatingOut) return;
+    if (items.isEmpty) return;
+    _isReturnAnimation = false;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final endX = (liked ? 1 : -1) * (screenWidth + 200);
+    final begin = _offset;
+    final end = Offset(endX, 0); // Y = 0 fixed
+    _swipeAnimation = Tween<Offset>(begin: begin, end: end).animate(CurvedAnimation(parent: _swipeController, curve: Curves.easeOutCubic))
+      ..addListener(() {
+        setState(() {
+          _offset = _swipeAnimation!.value;
+          // rotation clamped
+          final raw = _offset.dx / 300.0 * widget.rotationMultiplier;
+          _rotation = (raw.clamp(-widget.maxRotation, widget.maxRotation)).toDouble();
+        });
+      });
+    _pendingLike = liked;
+    _pendingProfile = top;
+    _isAnimatingOut = true;
+    _swipeController.reset();
+    _swipeController.forward();
+  }
+
+  // New horizontal-only handlers using HorizontalDragGestureRecognizer
+  void _onHorizontalDragStart(DragStartDetails details) {
+    // nothing for now, but kept for extensibility (e.g. start velocity tracking)
+  }
+
+  void _onHorizontalDragUpdate(DragUpdateDetails d) {
     setState(() {
-      _offset += d.delta;
-      _rotation = _offset.dx / 300;
+      // Restrict movement to the X axis only. Keep Y at 0 so cards don't move up/down.
+      _offset = Offset(_offset.dx + d.delta.dx, 0);
+      // Compute rotation based on horizontal displacement, apply multiplier and clamp.
+  final raw = _offset.dx / 300.0 * widget.rotationMultiplier;
+  _rotation = (raw.clamp(-widget.maxRotation, widget.maxRotation)).toDouble();
     });
   }
 
-  void _onPanEnd(DragEndDetails e) {
+  void _onHorizontalDragEnd(DragEndDetails e) {
     final width = MediaQuery.of(context).size.width;
-    final threshold = width * 0.25;
-    if (_offset.dx > threshold) {
-      _doSwipe(true);
-    } else if (_offset.dx < -threshold) {
-      _doSwipe(false);
+    final threshold = width * widget.swipeThreshold;
+    // Use velocity as well for fling behavior: if fling is strong horizontally, accept swipe
+    final vx = e.velocity.pixelsPerSecond.dx;
+    final flingAccepted = vx.abs() > 800; // px/s threshold for a fling
+    if (_offset.dx > threshold || (vx > 0 && flingAccepted)) {
+      if (items.isNotEmpty) _performSwipeAnim(items.last, true);
+    } else if (_offset.dx < -threshold || (vx < 0 && flingAccepted)) {
+      if (items.isNotEmpty) _performSwipeAnim(items.last, false);
     } else {
       // return to center
-      setState(() {
-        _offset = Offset.zero;
-        _rotation = 0.0;
-      });
+      _animateBackToCenter();
     }
   }
 
   void _doSwipe(bool liked) {
     if (items.isEmpty) return;
-    final top = items.removeLast();
-    history.add({'profile': top, 'liked': liked});
-    widget.onSwipe(top, liked);
-    // reset
-    setState(() {
-      _offset = Offset.zero;
-      _rotation = 0.0;
-    });
+    final top = items.last;
+    _performSwipeAnim(top, liked);
   }
 
   void _undo() {
@@ -136,14 +246,24 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
                     final isTop = i == items.length - 1;
                     final child = _buildCard(items[i], isTop: isTop, scale: scale, translate: translate);
                     if (isTop) {
-                      return GestureDetector(
-                        onPanStart: (_) {},
-                        onPanUpdate: _onPanUpdate,
-                        onPanEnd: _onPanEnd,
+                      return RawGestureDetector(
+                        gestures: <Type, GestureRecognizerFactory>{
+                          HorizontalDragGestureRecognizer:
+                              GestureRecognizerFactoryWithHandlers<HorizontalDragGestureRecognizer>(
+                            () => HorizontalDragGestureRecognizer(),
+                            (HorizontalDragGestureRecognizer instance) {
+                              instance.onStart = _onHorizontalDragStart;
+                              instance.onUpdate = _onHorizontalDragUpdate;
+                              instance.onEnd = _onHorizontalDragEnd;
+                            },
+                          ),
+                        },
+                        behavior: HitTestBehavior.translucent,
                         child: Transform.translate(
-                          offset: _offset,
+                          offset: Offset(_offset.dx, 0),
                           child: Transform.rotate(
-                            angle: _rotation * 0.4,
+                            // _rotation already contains the clamped rotation in radians
+                            angle: _rotation,
                             child: child,
                           ),
                         ),
@@ -152,24 +272,7 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
                     return child;
                   })
                 ],
-              // overlay labels
-              if (_offset.dx.abs() > 20)
-                Positioned(
-                  top: 40,
-                  left: _offset.dx > 0 ? 40 : null,
-                  right: _offset.dx < 0 ? 40 : null,
-                  child: Opacity(
-                    opacity: math.min(_offset.dx.abs() / 150, 1.0),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.w),
-                      decoration: BoxDecoration(
-                        color: _offset.dx > 0 ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.secondary,
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      child: Text(_offset.dx > 0 ? 'EVET' : 'HAYIR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20.sp)),
-                    ),
-                  ),
-                ),
+              // no overlay labels (EVET/HAYIR) — removed for cleaner UX
             ],
           ),
         ),

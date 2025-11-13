@@ -220,8 +220,16 @@ class _SettingsPageState extends State<SettingsPage> with SingleTickerProviderSt
 
   Widget _buildProfileHeader(ThemeData theme, AppLocalizations localizations) {
     final provider = Provider.of<UserProvider?>(context);
-    final profile = provider?.profile;
-    final displayName = (profile as dynamic)?.username ?? _username ?? localizations.anonymous ?? 'Anonymous';
+  final profile = provider?.profile as Map<String, dynamic>?;
+  final firebaseUser = FirebaseAuth.instance.currentUser;
+  final firebaseName = firebaseUser?.displayName;
+  final email = firebaseUser?.email;
+  final backendName = (profile != null) ? ((profile['name'] as String?) ?? (profile['username'] as String?) ?? '') : (_username ?? '');
+  final displayName = (firebaseName != null && firebaseName.isNotEmpty)
+    ? firebaseName
+    : (backendName.isNotEmpty
+      ? backendName
+      : (email != null && email.isNotEmpty ? email.split('@').first : localizations.anonymous));
 
     String memberSinceText = localizations.memberSince;
     try {
@@ -312,7 +320,7 @@ class _SettingsPageState extends State<SettingsPage> with SingleTickerProviderSt
   Widget _buildEditProfileTile(AppLocalizations localizations, ThemeData theme) {
     return ListTile(
       leading: Padding(padding: const EdgeInsets.all(8.0), child: Icon(Icons.person, color: theme.colorScheme.primary)),
-      title: Text('Profilimi Düzenle', style: TextStyle(fontWeight: FontWeight.w600)),
+      title: const Text('Profilimi Düzenle', style: TextStyle(fontWeight: FontWeight.w600)),
       onTap: () async {
         final token = await _getIdToken();
         if (token == null) {

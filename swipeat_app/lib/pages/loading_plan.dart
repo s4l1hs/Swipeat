@@ -45,7 +45,7 @@ class _LoadingPlanScreenState extends State<LoadingPlanScreen> with SingleTicker
               SizedBox(height: 20.h),
               Text('Sihir yapılıyor...', style: Theme.of(context).textTheme.titleLarge),
               SizedBox(height: 8.h),
-              Padding(padding: EdgeInsets.symmetric(horizontal: 24.w), child: Text("Sadece 'Evet' dediklerini kullanarak planın optimize ediliyor…", textAlign: TextAlign.center)),
+              Padding(padding: EdgeInsets.symmetric(horizontal: 24.w), child: const Text("Sadece 'Evet' dediklerini kullanarak planın optimize ediliyor…", textAlign: TextAlign.center)),
             ],
           ),
         ),

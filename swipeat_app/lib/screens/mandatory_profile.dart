@@ -23,7 +23,7 @@ class _MandatoryProfileScreenState extends State<MandatoryProfileScreen> {
   final TextEditingController _heightCtrl = TextEditingController();
   final TextEditingController _weightCtrl = TextEditingController();
   String _gender = 'male';
-  String _interestedIn = 'female';
+  final String _interestedIn = 'female';
   String _dietGoal = 'Kilo Vermek';
   bool _saving = false;
 

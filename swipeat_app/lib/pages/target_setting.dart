@@ -53,7 +53,7 @@ class _TargetSettingScreenState extends State<TargetSettingScreen> {
               borderRadius: BorderRadius.circular(12.r),
               selectedColor: Colors.white,
               fillColor: Theme.of(context).colorScheme.primary,
-              children: [ const Padding(padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0), child: Text('Kilo Vermek')), const Padding(padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0), child: Text('Kilo Korumak')), const Padding(padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0), child: Text('Kas Kazanmak')) ],
+              children: const [ Padding(padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0), child: Text('Kilo Vermek')), Padding(padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0), child: Text('Kilo Korumak')), Padding(padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0), child: Text('Kas Kazanmak')) ],
             ),
             SizedBox(height: 18.h),
             Text('Günlük Kalori İhtiyacın', style: Theme.of(context).textTheme.titleMedium),

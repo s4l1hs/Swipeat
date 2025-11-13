@@ -55,7 +55,7 @@ class _MainScreenState extends State<MainScreen> {
     final me = _buildMe();
     final pages = <Widget>[
       SwipeScreen(me: me),
-      PlanOverviewScreen(targetCalories: 2000),
+      const PlanOverviewScreen(targetCalories: 2000),
       SubscriptionPage(idToken: _idToken),
       const SettingsPage(),
     ];

@@ -182,9 +182,29 @@ def create_or_update_profile(payload: ProfileCreate, uid: str = Depends(get_uid)
 @app.get("/api/me", response_model=ProfileOut)
 def get_my_profile(uid: str = Depends(get_uid), db: Session = Depends(get_db)):
     p = db.get(ProfileORM, uid)
-    if not p:
-        raise HTTPException(status_code=404, detail="Profile not found. Create it with POST /api/profiles")
-    return profile_to_out(p)
+    if p:
+        return profile_to_out(p)
+
+    # If no profile exists in DB, attempt to return a sensible default using Firebase
+    # user record (display name / email). This avoids 404s in development when
+    # the frontend queries /api/me before creating a profile.
+    try:
+        user = firebase_auth.get_user(uid)
+        display_name = user.display_name or (user.email.split('@')[0] if user.email else f'user-{uid[:6]}')
+    except Exception:
+        display_name = f'user-{uid[:6]}'
+
+    now = datetime.now(timezone.utc)
+    return ProfileOut(
+        uid=uid,
+        name=display_name,
+        age=None,
+        bio=None,
+        photos=[],
+        interests=[],
+        created_at=now,
+        updated_at=now,
+    )
 
 @app.get("/api/profiles/{target_uid}", response_model=ProfileOut)
 def get_profile(target_uid: str, db: Session = Depends(get_db)):
@@ -221,10 +241,26 @@ def swipe_profile(to_uid: str, payload: SwipeRequest, uid: str = Depends(get_uid
     """
     if uid == to_uid:
         raise HTTPException(status_code=400, detail="Cannot swipe on yourself")
-    # ensure target exists
+    # ensure target exists; in dev we may receive placeholder UIDs from the client
+    # (e.g. dummy candidates). Create a lightweight placeholder profile if missing
+    # so swipes do not fail with 404 during local development.
     target = db.get(ProfileORM, to_uid)
     if not target:
-        raise HTTPException(status_code=404, detail="Target profile not found")
+        placeholder_name = f'Candidate-{to_uid[:6]}'
+        now = datetime.now(timezone.utc)
+        target = ProfileORM(
+            uid=to_uid,
+            name=placeholder_name,
+            age=None,
+            bio=None,
+            photos_json=json.dumps([]),
+            interests_json=json.dumps([]),
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(target)
+        db.commit()
+        db.refresh(target)
 
     # check existing swipe
     existing = db.query(SwipeORM).filter(and_(SwipeORM.from_uid == uid, SwipeORM.to_uid == to_uid)).first()
