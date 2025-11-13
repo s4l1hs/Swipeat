@@ -54,17 +54,31 @@ class _SwipeScreenState extends State<SwipeScreen> {
       debugPrint('Could not fetch candidates from backend: $e');
     }
 
-    // fallback: generate some dummy candidates so onboarding still works offline
-    final fallback = List.generate(6, (i) {
-      return Profile(
-        id: 'c$i',
-        name: 'Person ${i + 1}',
-        age: 20 + i,
-        bio: 'Loves design, music and long walks.',
-        photos: [],
-        interests: ['music', 'design'],
-      );
-    }).reversed.toList();
+    // fallback: generate some food items so swipe UI shows food cards (name + image)
+    final foods = [
+      {'name': 'Avocado', 'photo': 'asset:assets/images/png/avocado.png'},
+      {'name': 'Apple', 'photo': 'asset:assets/images/png/apple.png'},
+      {'name': 'Chicken', 'photo': 'asset:assets/images/png/chicken.png'},
+      {'name': 'Salad', 'photo': 'asset:assets/images/png/salad.png'},
+      {'name': 'Banana', 'photo': 'asset:assets/images/png/banana.png'},
+      {'name': 'Bread', 'photo': 'asset:assets/images/png/bread.png'},
+    ];
+
+    final fallback = foods
+        .asMap()
+        .entries
+        .map((e) => Profile(
+              id: 'food${e.key}',
+              name: e.value['name']!,
+              age: null,
+              bio: 'Tasty ${e.value['name']}',
+              photos: [e.value['photo']!],
+              interests: const [],
+            ))
+        .toList()
+        .reversed
+        .toList();
+
     setState(() => candidates = fallback);
   }
 
