@@ -206,13 +206,6 @@ def get_my_profile(uid: str = Depends(get_uid), db: Session = Depends(get_db)):
         updated_at=now,
     )
 
-@app.get("/api/profiles/{target_uid}", response_model=ProfileOut)
-def get_profile(target_uid: str, db: Session = Depends(get_db)):
-    p = db.get(ProfileORM, target_uid)
-    if not p:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    return profile_to_out(p)
-
 @app.get("/api/profiles/next", response_model=List[ProfileOut])
 @app.get("/api/profiles/next/", response_model=List[ProfileOut])
 def get_next_candidates(limit: int = 20, uid: str = Depends(get_uid), db: Session = Depends(get_db)):
@@ -239,6 +232,14 @@ def get_next_candidates(limit: int = 20, uid: str = Depends(get_uid), db: Sessio
         # In case of unexpected errors (or missing DB objects), log and return empty list
         print(f"get_next_candidates error for uid={uid}: {e}")
         return []
+
+
+@app.get("/api/profiles/{target_uid}", response_model=ProfileOut)
+def get_profile(target_uid: str, db: Session = Depends(get_db)):
+    p = db.get(ProfileORM, target_uid)
+    if not p:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return profile_to_out(p)
 
 @app.post("/api/profiles/{to_uid}/swipe", response_model=SwipeResult)
 def swipe_profile(to_uid: str, payload: SwipeRequest, uid: str = Depends(get_uid), db: Session = Depends(get_db)):
