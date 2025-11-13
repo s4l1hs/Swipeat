@@ -3,8 +3,17 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
 import '../models/profile.dart';
+
+// Simple visual mapping for foods: emoji and background color
+const Map<String, Map<String, dynamic>> _foodVisuals = {
+  'avocado': {'emoji': '🥑', 'bg': Color(0xFF86C166)},
+  'apple': {'emoji': '🍎', 'bg': Color(0xFFFFE6E6)},
+  'banana': {'emoji': '🍌', 'bg': Color(0xFFFFF9E6)},
+  'bread': {'emoji': '🥖', 'bg': Color(0xFFFFF4EB)},
+  'chicken': {'emoji': '🍗', 'bg': Color(0xFFFFF6E5)},
+  'salad': {'emoji': '🥗', 'bg': Color(0xFFE8FFF2)},
+};
 
 typedef OnSwipe = void Function(Profile profile, bool liked);
 
@@ -189,25 +198,60 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // background image
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  image: p.photos.isNotEmpty
-                      ? DecorationImage(image: NetworkImage(p.photos.first), fit: BoxFit.cover)
-                      : null,
-                ),
+              // background image (support local SVG assets, raster assets, and network images)
+              // Replace raster/SVG/network images with a compact emoji badge + background color per food.
+              Positioned.fill(
+                child: Builder(builder: (ctx) {
+                  final key = p.name.toLowerCase();
+                  final visual = _foodVisuals.containsKey(key) ? _foodVisuals[key]! : {'emoji': '🍽️', 'bg': Color(0xFFEEEEEE)};
+                  final Color bg = visual['bg'] as Color;
+                  final String emoji = visual['emoji'] as String;
+                  return Container(
+                    color: bg,
+                    child: Stack(
+                      children: [
+                        // centered big faint emoji as decorative background (low opacity)
+                        Center(
+                          child: Opacity(
+                            opacity: 0.08,
+                            child: Text(
+                              emoji,
+                              style: TextStyle(fontSize: 200.sp),
+                            ),
+                          ),
+                        ),
+                        // circular badge at top-left
+                        Positioned(
+                          top: 16.h,
+                          left: 16.w,
+                          child: Container(
+                            width: 48.w,
+                            height: 48.w,
+                            decoration: BoxDecoration(
+                              color: bg,
+                              shape: BoxShape.circle,
+                              boxShadow: [BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.12), blurRadius: 6, offset: Offset(0, 2))],
+                            ),
+                            child: Center(
+                              child: Text(emoji, style: TextStyle(fontSize: 22.sp)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
               ),
               // subtle gradient at bottom for text legibility
               Align(
                 alignment: Alignment.bottomCenter,
                 child: Container(
                   height: cardHeight * 0.30,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Colors.black.withOpacity(0.45)],
+                      colors: [Colors.transparent, Color.fromRGBO(0, 0, 0, 0.45)],
                     ),
                   ),
                 ),
@@ -231,19 +275,19 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
                 ),
               ),
               // small decorative inner shadow / vignette
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
+                  Positioned.fill(
+                        child: IgnorePointer(
+                          child: DecoratedBox(
+                      decoration: BoxDecoration(
                       gradient: RadialGradient(
                         center: Alignment.center,
                         radius: 1.2,
-                        colors: [Colors.transparent, Colors.black.withOpacity(0.06)],
-                        stops: [0.7, 1.0],
+                            colors: [Colors.transparent, Color.fromRGBO(0, 0, 0, 0.06)],
+                            stops: [0.7, 1.0],
                       ),
                     ),
-                  ),
-                ),
+                      ),
+                    ),
               ),
             ],
           ),
