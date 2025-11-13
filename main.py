@@ -214,6 +214,7 @@ def get_profile(target_uid: str, db: Session = Depends(get_db)):
     return profile_to_out(p)
 
 @app.get("/api/profiles/next", response_model=List[ProfileOut])
+@app.get("/api/profiles/next/", response_model=List[ProfileOut])
 def get_next_candidates(limit: int = 20, uid: str = Depends(get_uid), db: Session = Depends(get_db)):
     """
     Return a list of candidate profiles for the current user to swipe on.
@@ -222,16 +223,22 @@ def get_next_candidates(limit: int = 20, uid: str = Depends(get_uid), db: Sessio
      - profiles the user already swiped on
     Order: newest first
     """
-    # get uids already swiped by user
-    swiped = db.execute(
-        db.query(SwipeORM.to_uid).filter(SwipeORM.from_uid == uid)
-    ).scalars().all()
-    q = db.query(ProfileORM).filter(ProfileORM.uid != uid)
-    if swiped:
-        q = q.filter(~ProfileORM.uid.in_(swiped))
-    q = q.order_by(ProfileORM.created_at.desc()).limit(limit)
-    candidates = q.all()
-    return [profile_to_out(c) for c in candidates]
+    try:
+        # get uids already swiped by user
+        swiped = db.execute(
+            db.query(SwipeORM.to_uid).filter(SwipeORM.from_uid == uid)
+        ).scalars().all()
+        q = db.query(ProfileORM).filter(ProfileORM.uid != uid)
+        if swiped:
+            q = q.filter(~ProfileORM.uid.in_(swiped))
+        q = q.order_by(ProfileORM.created_at.desc()).limit(limit)
+        candidates = q.all()
+        print(f"get_next_candidates: uid={uid} -> {len(candidates)} candidates")
+        return [profile_to_out(c) for c in candidates]
+    except Exception as e:
+        # In case of unexpected errors (or missing DB objects), log and return empty list
+        print(f"get_next_candidates error for uid={uid}: {e}")
+        return []
 
 @app.post("/api/profiles/{to_uid}/swipe", response_model=SwipeResult)
 def swipe_profile(to_uid: str, payload: SwipeRequest, uid: str = Depends(get_uid), db: Session = Depends(get_db)):

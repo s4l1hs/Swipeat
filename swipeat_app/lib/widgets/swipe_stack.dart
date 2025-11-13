@@ -172,50 +172,80 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
     }
   }
 
-  void _doSwipe(bool liked) {
-    if (items.isEmpty) return;
-    final top = items.last;
-    _performSwipeAnim(top, liked);
-  }
+  // Programmatic swipe/undo controls removed — gestures drive the UX exclusively.
 
-  void _undo() {
-    if (history.isEmpty) return;
-    final last = history.removeLast();
-    items.add(last['profile'] as Profile);
-    setState(() {});
-  }
-
-  Widget _buildCard(Profile p, {required bool isTop, required double scale, required double translate}) {
+  Widget _buildCard(Profile p, {required bool isTop, required double cardWidth, required double cardHeight, required double translate}) {
+    // Aesthetic food-card: fixed size, full-bleed image and centered name overlay
+    final radius = 18.r;
     return Transform.translate(
       offset: Offset(0, translate),
-      child: Transform.scale(
-        scale: scale,
+      child: SizedBox(
+        width: cardWidth,
+        height: cardHeight,
         child: Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-          elevation: 6,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16.r),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: p.photos.isNotEmpty
-                      ? Image.network(p.photos.first, fit: BoxFit.cover, errorBuilder: (c, e, s) => const SizedBox())
-                      : Container(color: Colors.grey.shade200),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+          elevation: 12,
+          clipBehavior: Clip.hardEdge,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // background image
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  image: p.photos.isNotEmpty
+                      ? DecorationImage(image: NetworkImage(p.photos.first), fit: BoxFit.cover)
+                      : null,
                 ),
-                Padding(
-                  padding: EdgeInsets.all(12.w),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${p.name}, ${p.age ?? ''}', style: Theme.of(context).textTheme.titleLarge),
-                      SizedBox(height: 6.h),
-                      Text(p.bio ?? '', style: Theme.of(context).textTheme.bodyMedium),
-                    ],
+              ),
+              // subtle gradient at bottom for text legibility
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  height: cardHeight * 0.30,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Colors.black.withOpacity(0.45)],
+                    ),
                   ),
                 ),
-              ],
-            ),
+              ),
+              // food name centered near bottom
+              Positioned(
+                left: 16.w,
+                right: 16.w,
+                bottom: 18.h,
+                child: Center(
+                  child: Text(
+                    p.name,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22.sp,
+                      fontWeight: FontWeight.bold,
+                      shadows: [Shadow(blurRadius: 8.r, color: Colors.black45, offset: Offset(0, 2.h))],
+                    ),
+                  ),
+                ),
+              ),
+              // small decorative inner shadow / vignette
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: Alignment.center,
+                        radius: 1.2,
+                        colors: [Colors.transparent, Colors.black.withOpacity(0.06)],
+                        stops: [0.7, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -241,10 +271,10 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
                 if (i >= items.length - visible) ...[ // show only last N
                   Builder(builder: (ctx) {
                     final depth = i - (items.length - visible);
-                    final scale = 1.0 - 0.04 * depth;
-                    final translate = 12.0 * depth;
+                    // keep all cards same size for a uniform look
+                    final translate = 8.0 * depth; // small stacking offset
                     final isTop = i == items.length - 1;
-                    final child = _buildCard(items[i], isTop: isTop, scale: scale, translate: translate);
+                    final child = _buildCard(items[i], isTop: isTop, cardWidth: baseWidth, cardHeight: baseHeight, translate: translate);
                     if (isTop) {
                       return RawGestureDetector(
                         gestures: <Type, GestureRecognizerFactory>{
@@ -276,40 +306,7 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
             ],
           ),
         ),
-        SizedBox(height: 18.h),
-        // progress indicator
-        LinearProgressIndicator(
-          value: widget.items.isEmpty ? 1.0 : (widget.items.length - items.length) / (widget.items.length + history.length == 0 ? 1 : widget.items.length + history.length),
-          backgroundColor: Colors.grey.shade200,
-          valueColor: AlwaysStoppedAnimation(Colors.green.shade600),
-          minHeight: 8.h,
-        ),
-        SizedBox(height: 18.h),
-        // controls
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            IconButton(
-              onPressed: _undo,
-              icon: const Icon(Icons.undo),
-              tooltip: 'Undo',
-            ),
-            SizedBox(width: 24.w),
-            FloatingActionButton(
-              heroTag: 'no',
-              onPressed: () => _doSwipe(false),
-              backgroundColor: Theme.of(context).colorScheme.secondary,
-              child: const Icon(Icons.close),
-            ),
-            SizedBox(width: 24.w),
-            FloatingActionButton(
-              heroTag: 'yes',
-              onPressed: () => _doSwipe(true),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              child: const Icon(Icons.favorite),
-            ),
-          ],
-        )
+        // No controls or progress indicator — show only the card stack
       ],
     );
   }

@@ -5,6 +5,7 @@ import 'pages/swipe_screen.dart';
 import 'pages/subscription_page.dart';
 import 'pages/plan_overview.dart';
 import 'pages/settings_page.dart';
+import 'widgets/swipeat_app_bar.dart';
 
 /// Main app shell with bottom navigation.
 class MainScreen extends StatefulWidget {
@@ -61,6 +62,7 @@ class _MainScreenState extends State<MainScreen> {
     ];
 
     return Scaffold(
+      appBar: const SwipeatAppBar(),
       body: SafeArea(child: pages[_selected]),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selected,

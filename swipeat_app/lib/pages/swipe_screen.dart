@@ -91,12 +91,16 @@ class _SwipeScreenState extends State<SwipeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Discover')),
+      // No AppBar title — keep screen focused on the cards only
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.all(12.w),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+                // small spacer so the cards sit a bit lower on the screen (global app bar above)
+                SizedBox(height: 20.h),
+
               Expanded(
                 child: Center(
                   child: candidates.isEmpty
@@ -107,7 +111,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                         ),
                 ),
               ),
-              SizedBox(height: 18.h),
+              SizedBox(height: 12.h),
             ],
           ),
         ),
