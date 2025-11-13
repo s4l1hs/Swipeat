@@ -210,31 +210,12 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
                     color: bg,
                     child: Stack(
                       children: [
-                        // centered big faint emoji as decorative background (low opacity)
+                        // centered big emoji as the clear, primary icon for the card
                         Center(
-                          child: Opacity(
-                            opacity: 0.08,
-                            child: Text(
-                              emoji,
-                              style: TextStyle(fontSize: 200.sp),
-                            ),
-                          ),
-                        ),
-                        // circular badge at top-left
-                        Positioned(
-                          top: 16.h,
-                          left: 16.w,
-                          child: Container(
-                            width: 48.w,
-                            height: 48.w,
-                            decoration: BoxDecoration(
-                              color: bg,
-                              shape: BoxShape.circle,
-                              boxShadow: [BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.12), blurRadius: 6, offset: Offset(0, 2))],
-                            ),
-                            child: Center(
-                              child: Text(emoji, style: TextStyle(fontSize: 22.sp)),
-                            ),
+                          child: Text(
+                            emoji,
+                            // slightly larger but not so large that it obscures the name overlay
+                            style: TextStyle(fontSize: 140.sp),
                           ),
                         ),
                       ],
