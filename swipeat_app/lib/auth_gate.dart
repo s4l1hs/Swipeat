@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'firebase_options.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'login_page.dart';
-import 'screens/mandatory_profile.dart';
+// mandatory_profile is available as an optional in-app flow; not forced at sign-in
 import 'main_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -44,21 +44,10 @@ class AuthGate extends StatelessWidget {
             if (snap.connectionState == ConnectionState.waiting) return const Scaffold(body: Center(child: CircularProgressIndicator(color: Colors.amber)));
             if (snap.hasError) return Scaffold(body: Center(child: Text('Error checking profile: ${snap.error}')));
 
-            final complete = snap.data ?? false;
-            if (!complete) {
-              // show mandatory profile screen
-              return FutureBuilder<String?>(
-                future: user.getIdToken(),
-                builder: (context, tokenSnap) {
-                  if (tokenSnap.connectionState == ConnectionState.waiting) return const Scaffold(body: Center(child: CircularProgressIndicator(color: Colors.amber)));
-                  final token = tokenSnap.data;
-                  if (token == null) return const LoginPage();
-                  return MandatoryProfileScreen(idToken: token, displayName: user.displayName);
-                },
-              );
-            }
-
-            // profile complete -> navigate to main app shell
+            // We no longer force the mandatory profile screen at sign-in.
+            // If the backend indicates an incomplete profile we still continue
+            // into the main app shell and the user can optionally complete their
+            // profile later from settings. This improves first-run flow.
             return const MainScreen();
           },
         );

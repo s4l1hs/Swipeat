@@ -3,8 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'models/profile.dart';
 import 'pages/swipe_screen.dart';
 import 'pages/subscription_page.dart';
-import 'pages/notifications_screen.dart';
-import 'pages/messages_screen.dart';
+import 'pages/plan_overview.dart';
 import 'pages/settings_page.dart';
 
 /// Main app shell with bottom navigation.
@@ -56,9 +55,8 @@ class _MainScreenState extends State<MainScreen> {
     final me = _buildMe();
     final pages = <Widget>[
       SwipeScreen(me: me),
+      PlanOverviewScreen(targetCalories: 2000),
       SubscriptionPage(idToken: _idToken),
-      const NotificationsScreen(),
-      const MessagesScreen(),
       const SettingsPage(),
     ];
 
@@ -73,9 +71,8 @@ class _MainScreenState extends State<MainScreen> {
         selectedItemColor: Theme.of(context).colorScheme.primary,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Discover'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Plan'),
           BottomNavigationBarItem(icon: Icon(Icons.card_membership), label: 'Subscriptions'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notifications'),
-          BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
           BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),

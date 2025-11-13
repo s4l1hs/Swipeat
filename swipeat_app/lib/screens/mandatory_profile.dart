@@ -20,8 +20,11 @@ class _MandatoryProfileScreenState extends State<MandatoryProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameCtrl = TextEditingController();
   final TextEditingController _ageCtrl = TextEditingController();
+  final TextEditingController _heightCtrl = TextEditingController();
+  final TextEditingController _weightCtrl = TextEditingController();
   String _gender = 'male';
   String _interestedIn = 'female';
+  String _dietGoal = 'Kilo Vermek';
   bool _saving = false;
 
   @override
@@ -44,14 +47,19 @@ class _MandatoryProfileScreenState extends State<MandatoryProfileScreen> {
     setState(() => _saving = true);
 
     final name = _nameCtrl.text.trim();
-    final age = int.tryParse(_ageCtrl.text.trim());
+  final age = int.tryParse(_ageCtrl.text.trim());
+  final height = double.tryParse(_heightCtrl.text.trim());
+  final weight = double.tryParse(_weightCtrl.text.trim());
 
-    // Build interests with gender metadata so backend can store them without schema change
-    final interests = ['gender:${_gender}', 'interested:${_interestedIn}'];
+  // Build interests with gender metadata so backend can store them without schema change
+  final interests = ['gender:$_gender', 'interested:$_interestedIn'];
 
     final body = jsonEncode({
       'name': name,
       'age': age,
+      'height': height,
+      'weight': weight,
+      'diet_goal': _dietGoal,
       'bio': '',
       'photos': [],
       'interests': interests,
@@ -66,10 +74,12 @@ class _MandatoryProfileScreenState extends State<MandatoryProfileScreen> {
 
       if (resp.statusCode == 201 || resp.statusCode == 200) {
         // Refresh local profile via provider so app knows profile exists and won't re-prompt
-        try {
-          // Refresh provider with the token we already have
-          Provider.of<UserProvider>(context, listen: false).loadProfile(widget.idToken);
-        } catch (_) {}
+        if (mounted) {
+          try {
+            // Refresh provider with the token we already have
+            Provider.of<UserProvider>(context, listen: false).loadProfile(widget.idToken);
+          } catch (_) {}
+        }
         // navigate to main app shell
         if (!mounted) return;
         Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const MainScreen()));
@@ -94,17 +104,24 @@ class _MandatoryProfileScreenState extends State<MandatoryProfileScreen> {
           child: Form(
             key: _formKey,
             child: Column(children: [
-              TextFormField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Full name'), validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,),
+              // Turkish labels and additional fields: height and weight, diet goal
+              TextFormField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'İsim'), validator: (v) => (v == null || v.trim().isEmpty) ? 'Gerekli' : null,),
               SizedBox(height: 12.h),
-              TextFormField(controller: _ageCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Age'), validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Required';
-                if (int.tryParse(v.trim()) == null) return 'Enter a number';
+              Row(children: [
+                Expanded(child: TextFormField(controller: _heightCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Boy (cm)'), validator: (v) { if (v == null || v.trim().isEmpty) return 'Gerekli'; if (double.tryParse(v.trim()) == null) return 'Sayı girin'; return null; })),
+                SizedBox(width: 8.w),
+                Expanded(child: TextFormField(controller: _weightCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Kilo (kg)'), validator: (v) { if (v == null || v.trim().isEmpty) return 'Gerekli'; if (double.tryParse(v.trim()) == null) return 'Sayı girin'; return null; })),
+              ]),
+              SizedBox(height: 12.h),
+              TextFormField(controller: _ageCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Yaş'), validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Gerekli';
+                if (int.tryParse(v.trim()) == null) return 'Sayı girin';
                 return null;
               }),
               SizedBox(height: 12.h),
-              DropdownButtonFormField<String>(value: _gender, items: const [DropdownMenuItem(value: 'male', child: Text('Male')), DropdownMenuItem(value: 'female', child: Text('Female')), DropdownMenuItem(value: 'nonbinary', child: Text('Non-binary'))], onChanged: (v) { if (v != null) setState(() => _gender = v); }, decoration: const InputDecoration(labelText: 'Gender'),),
+              DropdownButtonFormField<String>(initialValue: _gender, items: const [DropdownMenuItem(value: 'male', child: Text('Erkek')), DropdownMenuItem(value: 'female', child: Text('Kadın')), DropdownMenuItem(value: 'nonbinary', child: Text('Diğer'))], onChanged: (v) { if (v != null) setState(() => _gender = v); }, decoration: const InputDecoration(labelText: 'Cinsiyet'),),
               SizedBox(height: 12.h),
-              DropdownButtonFormField<String>(value: _interestedIn, items: const [DropdownMenuItem(value: 'male', child: Text('Male')), DropdownMenuItem(value: 'female', child: Text('Female')), DropdownMenuItem(value: 'everyone', child: Text('Everyone'))], onChanged: (v) { if (v != null) setState(() => _interestedIn = v); }, decoration: const InputDecoration(labelText: 'Interested in'),),
+              DropdownButtonFormField<String>(initialValue: _dietGoal, items: const [DropdownMenuItem(value: 'Kilo Vermek', child: Text('Kilo Vermek')), DropdownMenuItem(value: 'Kilo Korumak', child: Text('Kilo Korumak')), DropdownMenuItem(value: 'Kas Kazanmak', child: Text('Kas Kazanmak'))], onChanged: (v) { if (v != null) setState(() => _dietGoal = v); }, decoration: const InputDecoration(labelText: 'Diyet Hedefi'),),
               SizedBox(height: 18.h),
               SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _saving ? null : _submit, child: _saving ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Save'))),
             ]),

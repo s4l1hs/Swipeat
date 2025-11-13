@@ -89,7 +89,7 @@ class SwipeResult(BaseModel):
     already_swiped: bool = False
 
 # --- App & middleware ---
-app = FastAPI(title="Zinc - Swipe API", version="0.1.0")
+app = FastAPI(title="Swipeat - Swipe API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -246,7 +246,7 @@ def swipe_profile(to_uid: str, payload: SwipeRequest, uid: str = Depends(get_uid
 # Health endpoint
 @app.get("/api/status")
 def status():
-    return {"status": "ok", "app": "zinc", "timestamp": datetime.now(timezone.utc).isoformat()}
+    return {"status": "ok", "app": "swipeat", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 # Run with: uvicorn main:app --reload
 if __name__ == "__main__":

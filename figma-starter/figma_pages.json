@@ -1,0 +1,13 @@
+{
+  "pages": [
+    { "name": "Tokens", "purpose": "Import design-tokens.json here (colors, type, spacing)" },
+    { "name": "Components", "purpose": "Icons, FoodCard, Buttons - build components and variants here" },
+    { "name": "Screens", "purpose": "Place screen wireframes (onboarding, swipe, target, loading, plan, recipe)" }
+  ],
+  "importOrder": [
+    "tokens/design-tokens.json",
+    "components/icons/*.svg",
+    "components/food_card.svg",
+    "screens/*.svg"
+  ]
+}

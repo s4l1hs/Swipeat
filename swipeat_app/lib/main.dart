@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
@@ -27,7 +28,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   } catch (e) {
     debugPrint('Background Firebase init error: $e');
   }
-  print('Background message received: ${message.messageId}');
+  debugPrint('Background message received: ${message.messageId}');
 }
 
 void main() async {
@@ -79,11 +80,11 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
-    const Color brandDeep = Color(0xFFE91E63);     // vivid pink (light primary)
-    const Color brandAccent = Color(0xFFFF7043);   // warm coral / peach accent
-    const Color brandViolet = Color(0xFFAB47BC);   // soft lavender for secondary accents
-    const Color bgLight = Color(0xFFFFFBFD);       // very light blush background
-    const Color cardLight = Color(0xFFFFF1F6);     // soft card surface with blush tint
+  // Swipeat brand colors
+  const Color brandDeep = Color(0xFF7CB342); // Avocado green (primary action)
+  const Color brandReject = Color(0xFFFF6B6B); // Coral / Tomato red (reject)
+  const Color bgLight = Color(0xFFFFFFFF); // clean white background
+  const Color cardLight = Color(0xFFF4F4F8); // very light grey card surface
 
   // Dark theme variables removed — Zinc uses a single light theme.
 
@@ -94,18 +95,20 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         final localeProvider = Provider.of<LocaleProvider>(context);
         // Single-theme (light, warm) design for Zinc. No dark mode.
-        final theme = ThemeData(
+        final base = ThemeData(
+          primaryColor: brandDeep,
+        );
+
+        final theme = base.copyWith(
           brightness: Brightness.light,
           scaffoldBackgroundColor: bgLight,
           colorScheme: ColorScheme.fromSeed(seedColor: brandDeep, brightness: Brightness.light).copyWith(
             primary: brandDeep,
-            secondary: brandViolet,
-            tertiary: brandAccent,
-            background: bgLight,
+            secondary: brandReject,
             surface: cardLight,
             onPrimary: Colors.white,
           ),
-          appBarTheme: AppBarTheme(backgroundColor: Colors.transparent, foregroundColor: const Color(0xFF042028), elevation: 0),
+          appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, foregroundColor: Color(0xFF042028), elevation: 0),
           cardTheme: CardThemeData(color: cardLight, elevation: 8, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r))),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
@@ -115,18 +118,17 @@ class MyApp extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
             ),
           ),
-          textTheme: ThemeData.light().textTheme.apply(bodyColor: const Color(0xFF042028)),
+          textTheme: GoogleFonts.poppinsTextTheme(ThemeData.light().textTheme).apply(bodyColor: const Color(0xFF042028)),
           visualDensity: VisualDensity.adaptivePlatformDensity,
           pageTransitionsTheme: const PageTransitionsTheme(builders: { TargetPlatform.iOS: CupertinoPageTransitionsBuilder(), TargetPlatform.android: FadeUpwardsPageTransitionsBuilder() }),
         );
 
         return MaterialApp(
           locale: localeProvider.locale,
-          useInheritedMediaQuery: true,
           debugShowCheckedModeBanner: false,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          onGenerateTitle: (context) => "Zinc",
+          onGenerateTitle: (context) => "Swipeat",
           theme: theme,
           home: child,
         );

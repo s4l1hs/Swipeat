@@ -1,10 +1,11 @@
-import 'package:flutter/foundation.dart';
+// removed unnecessary import: flutter/foundation is imported later where kIsWeb is used
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'firebase_options.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'utils/color_utils.dart';
 import 'l10n/app_localizations.dart';
 import 'dart:ui';
 import 'dart:math' as math;
@@ -31,7 +32,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   late final Animation<Alignment> _backgroundAnimation1;
   late final Animation<Alignment> _backgroundAnimation2;
   late final Animation<double> _breathingAnimation;
-  late final Animation<double> _pulseAnimation;
+  // pulse animation currently unused — remove to silence analyzer until used
 
   bool _isButtonPressed = false;
   bool _isSigningIn = false;
@@ -63,7 +64,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     ]).animate(_backgroundController);
 
     _breathingAnimation = Tween<double>(begin: 0.96, end: 1.04).animate(CurvedAnimation(parent: _breathingController, curve: Curves.easeInOut));
-    _pulseAnimation = Tween<double>(begin: 0.98, end: 1.04).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+  //_pulseAnimation = Tween<double>(begin: 0.98, end: 1.04).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
 
     _entryController.forward();
   }
@@ -86,7 +87,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       final firebaseConfigured = !(kIsWeb && (opts.apiKey.isEmpty || opts.appId.isEmpty));
       if (!firebaseConfigured) {
         debugPrint('Attempted Google Sign-In but Firebase not configured for web.');
-        if (context.mounted) _showErrorSnackBar(context, AppLocalizations.of(context)?.loginFailedMessage ?? 'Firebase not configured for web');
+        if (context.mounted) {
+          final msg = AppLocalizations.of(context)?.loginFailedMessage ?? 'Firebase not configured for web';
+          _showErrorSnackBar(context, msg);
+        }
         return;
       }
 
@@ -108,8 +112,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       }
     } catch (e) {
       debugPrint('Google Sign-In hatası: $e');
-      final msg = AppLocalizations.of(context)?.loginFailedMessage ?? 'Login failed';
-      if (context.mounted) _showErrorSnackBar(context, msg);
+      if (context.mounted) {
+        final msg = AppLocalizations.of(context)?.loginFailedMessage ?? 'Login failed';
+        _showErrorSnackBar(context, msg);
+      }
     } finally {
       if (mounted) setState(() => _isSigningIn = false);
     }
@@ -143,7 +149,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     return Scaffold(
       body: Stack(
         children: [
-          Container(decoration: BoxDecoration(gradient: LinearGradient(colors: [theme.colorScheme.background, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter))),
+          Container(decoration: BoxDecoration(gradient: LinearGradient(colors: [theme.colorScheme.surface, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter))),
 
           AnimatedBuilder(
             animation: _backgroundController,
@@ -158,8 +164,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                         height: 420.w,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: RadialGradient(colors: [theme.colorScheme.primary.withOpacity(0.14), Colors.transparent]),
-                          boxShadow: [BoxShadow(color: theme.colorScheme.primary.withOpacity(0.08), blurRadius: 80.r, spreadRadius: 60.r)],
+                          gradient: RadialGradient(colors: [theme.colorScheme.primary.withOpacitySafe(0.14), Colors.transparent]),
+                          boxShadow: [BoxShadow(color: theme.colorScheme.primary.withOpacitySafe(0.08), blurRadius: 80.r, spreadRadius: 60.r)],
                         ),
                       ),
                     ),
@@ -172,8 +178,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                         height: 320.w,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: RadialGradient(colors: [theme.colorScheme.secondary.withOpacity(0.12), Colors.transparent]),
-                          boxShadow: [BoxShadow(color: theme.colorScheme.secondary.withOpacity(0.06), blurRadius: 80.r, spreadRadius: 40.r)],
+                          gradient: RadialGradient(colors: [theme.colorScheme.secondary.withOpacitySafe(0.12), Colors.transparent]),
+                          boxShadow: [BoxShadow(color: theme.colorScheme.secondary.withOpacitySafe(0.06), blurRadius: 80.r, spreadRadius: 40.r)],
                         ),
                       ),
                     ),
@@ -256,9 +262,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                               width: double.infinity,
                               padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.03),
+                                color: Colors.white.withOpacitySafe(0.03),
                                 borderRadius: BorderRadius.circular(18.r),
-                                border: Border.all(color: Colors.white.withOpacity(0.04)),
+                                border: Border.all(color: Colors.white.withOpacitySafe(0.04)),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -281,18 +287,18 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                             height: 56.h,
                                             width: double.infinity,
                                             decoration: BoxDecoration(
-                                              gradient: LinearGradient(
+                                                  gradient: LinearGradient(
                                                 colors: [
-                                                  theme.colorScheme.primary.withOpacity(0.98),
-                                                  (theme.colorScheme.tertiary).withOpacity(0.95),
-                                                  theme.colorScheme.secondary.withOpacity(0.95)
+                                                  theme.colorScheme.primary.withOpacitySafe(0.98),
+                                                  (theme.colorScheme.tertiary).withOpacitySafe(0.95),
+                                                  theme.colorScheme.secondary.withOpacitySafe(0.95)
                                                 ],
                                                 begin: Alignment(-math.sin(_gradientController.value * 2 * math.pi), -0.35),
                                                 end: Alignment(math.sin(_gradientController.value * 2 * math.pi), 0.35),
                                               ),
                                               borderRadius: BorderRadius.circular(12.r),
-                                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 10.r, offset: Offset(0, 6.h))],
-                                              border: Border.all(color: Colors.white.withOpacity(0.06)),
+                                              boxShadow: [BoxShadow(color: Colors.black.withOpacitySafe(0.35), blurRadius: 10.r, offset: Offset(0, 6.h))],
+                                              border: Border.all(color: Colors.white.withOpacitySafe(0.06)),
                                             ),
                                             child: Row(
                                               mainAxisAlignment: MainAxisAlignment.center,
@@ -301,7 +307,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                   margin: EdgeInsets.only(right: 12.w),
                                                   width: 36.w,
                                                   height: 36.w,
-                                                  decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
                                                   child: Padding(
                                                     padding: EdgeInsets.all(6.w),
                                                     child: Image.asset('assets/images/google_logo.png', fit: BoxFit.contain, errorBuilder: (c, e, s) {

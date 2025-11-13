@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <rect width="1080" height="1920" fill="#FFFFFF" />
+  <text x="80" y="160" font-family="Poppins, sans-serif" font-size="40" fill="#333">Sevdiğin Yiyecekleri Söyle.</text>
+  <text x="80" y="208" font-family="Poppins, sans-serif" font-size="18" fill="#70757A">Sana özel diyet planını hazırlayalım.</text>
+  <rect x="60" y="300" width="960" height="1200" rx="28" fill="#F4F4F8" stroke="#E6E8EB" />
+  <text x="540" y="900" font-family="Poppins, sans-serif" font-size="20" fill="#999" text-anchor="middle">Food card stack (drag to like / dislike)</text>
+  <rect x="300" y="1560" width="480" height="48" rx="24" fill="#E8F5E9" />
+  <text x="540" y="1596" font-family="Poppins, sans-serif" font-size="14" fill="#333" text-anchor="middle">Sevmiyorsan Sola, Seviyorsan Sağa Çek</text>
+</svg>

@@ -136,6 +136,22 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  /// Fetch next candidate profiles for swiping. Requires an authenticated idToken.
+  Future<List<Map<String, dynamic>>> getNextCandidates(String idToken, {int limit = 20}) async {
+    final uri = Uri.parse("$backendBaseUrl/api/profiles/next").replace(queryParameters: {'limit': limit.toString()});
+    final response = await http.get(uri, headers: _getAuthHeaders(idToken));
+    final data = _handleResponse(response);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Send a swipe event (like/dislike) for a target profile id.
+  Future<void> swipeProfile(String idToken, String toUid, String direction) async {
+    final uri = Uri.parse("$backendBaseUrl/api/profiles/$toUid/swipe");
+    final payload = jsonEncode({'direction': direction});
+    final response = await http.post(uri, headers: _getAuthHeaders(idToken), body: payload);
+    _handleResponse(response);
+  }
+
   Future<Map<String, String>> getTopics() async {
     final uri = Uri.parse("$backendBaseUrl/topics/");
     final response = await http.get(uri);

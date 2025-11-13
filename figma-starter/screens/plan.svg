@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <rect width="1080" height="1920" fill="#FFFFFF" />
+  <text x="80" y="120" font-family="Poppins, sans-serif" font-size="28" fill="#333">Haftalık Planın</text>
+  <g transform="translate(60,180)">
+    <rect x="0" y="0" width="960" height="84" rx="999" fill="#F4F4F8" />
+    <text x="80" y="54" font-family="Poppins, sans-serif" font-size="16" fill="#333">Paz</text>
+    <text x="200" y="54" font-family="Poppins, sans-serif" font-size="16" fill="#333">Pzt</text>
+    <text x="320" y="54" font-family="Poppins, sans-serif" font-size="16" fill="#333">Sal</text>
+  </g>
+  <g transform="translate(60,300)">
+    <rect x="0" y="0" width="960" height="120" rx="12" fill="#FFFFFF" stroke="#E6E8EB" />
+    <rect x="12" y="12" width="96" height="96" rx="12" fill="#EDEDED" />
+    <text x="132" y="48" font-family="Poppins, sans-serif" font-size="18" fill="#333">Peynirli Omlet</text>
+    <text x="132" y="78" font-family="Poppins, sans-serif" font-size="14" fill="#70757A">Kahvaltı • 420 kcal</text>
+    <circle cx="900" cy="60" r="18" fill="#7CB342" />
+  </g>
+  <g transform="translate(60,440)">
+    <rect x="0" y="0" width="960" height="120" rx="12" fill="#FFFFFF" stroke="#E6E8EB" />
+    <rect x="12" y="12" width="96" height="96" rx="12" fill="#EDEDED" />
+    <text x="132" y="48" font-family="Poppins, sans-serif" font-size="18" fill="#333">Somonlu Salata</text>
+    <text x="132" y="78" font-family="Poppins, sans-serif" font-size="14" fill="#70757A">Öğle • 560 kcal</text>
+  </g>
+</svg>

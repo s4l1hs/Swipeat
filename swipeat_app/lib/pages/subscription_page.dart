@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../utils/color_utils.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../providers/user_provider.dart';
@@ -98,7 +99,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [theme.colorScheme.primary.withOpacity(0.16), theme.colorScheme.secondary.withOpacity(0.05)],
+                          colors: [theme.colorScheme.primary.withOpacitySafe(0.16), theme.colorScheme.secondary.withOpacitySafe(0.05)],
                         ),
                         borderRadius: BorderRadius.circular(14.r),
                         boxShadow: [
@@ -137,7 +138,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                 scrollDirection: Axis.horizontal,
                 padding: EdgeInsets.symmetric(horizontal: 8.w),
                 itemCount: plans.length,
-                physics: BouncingScrollPhysics(),
+                physics: const BouncingScrollPhysics(),
                 itemBuilder: (context, index) {
                   final plan = plans[index];
                   return Padding(
@@ -149,10 +150,10 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
             ),
             SizedBox(height: 12.h),
             Center(
-              child: Text(localizations.subscriptionNote, style: TextStyle(color: theme.textTheme.bodySmall?.color?.withOpacity(0.7) ?? Colors.grey.shade400, fontSize: 12.sp), textAlign: TextAlign.center),
+              child: Text(localizations.subscriptionNote, style: TextStyle(color: theme.textTheme.bodySmall?.color?.withOpacitySafe(0.7) ?? Colors.grey.shade400, fontSize: 12.sp), textAlign: TextAlign.center),
             ),
             SizedBox(height: 6.h),
-            if (_isProcessing) Center(child: Padding(padding: EdgeInsets.only(top: 6.h), child: CircularProgressIndicator()))
+            if (_isProcessing) Center(child: Padding(padding: EdgeInsets.only(top: 6.h), child: const CircularProgressIndicator()))
           ],
         ),
       ),
@@ -202,16 +203,16 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                         {'icon': Icons.headset, 'label': localizations.prioritySupport},
                       ];
 
-            final Gradient cardGradient = planLevel == 'pro'
-                ? LinearGradient(colors: [cardColor.withOpacity(0.96), cardColor.withOpacity(0.68)])
-                : planLevel == 'ultra'
-                    ? LinearGradient(colors: [cardColor.withOpacity(1.0), cardColor.withOpacity(0.78)])
-                    : LinearGradient(colors: [cardColor.withOpacity(0.22), cardColor.withOpacity(0.08)]);
-            final List<BoxShadow> cardShadow = planLevel == 'pro'
-                ? [BoxShadow(color: cardColor.withOpacity(0.22), blurRadius: 22.r, offset: Offset(0,12.h))]
-                : planLevel == 'ultra'
-                    ? [BoxShadow(color: cardColor.withOpacity(0.28), blurRadius: 28.r, offset: Offset(0,14.h))]
-                    : [BoxShadow(color: theme.brightness == Brightness.dark ? Colors.black38 : Colors.black12, blurRadius: 16.r, offset: Offset(0,10.h))];
+      final Gradient cardGradient = planLevel == 'pro'
+        ? LinearGradient(colors: [cardColor.withOpacitySafe(0.96), cardColor.withOpacitySafe(0.68)])
+        : planLevel == 'ultra'
+          ? LinearGradient(colors: [cardColor.withOpacitySafe(1.0), cardColor.withOpacitySafe(0.78)])
+          : LinearGradient(colors: [cardColor.withOpacitySafe(0.22), cardColor.withOpacitySafe(0.08)]);
+      final List<BoxShadow> cardShadow = planLevel == 'pro'
+        ? [BoxShadow(color: cardColor.withOpacitySafe(0.22), blurRadius: 22.r, offset: Offset(0,12.h))]
+        : planLevel == 'ultra'
+          ? [BoxShadow(color: cardColor.withOpacitySafe(0.28), blurRadius: 28.r, offset: Offset(0,14.h))]
+          : [BoxShadow(color: theme.brightness == Brightness.dark ? Colors.black38 : Colors.black12, blurRadius: 16.r, offset: Offset(0,10.h))];
 
             return SizedBox(
               width: cardWidth,
@@ -219,9 +220,9 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
               child: Container(
               padding: EdgeInsets.all(14.w),
               decoration: BoxDecoration(
-                gradient: isCurrent ? cardGradient : LinearGradient(colors: [theme.brightness == Brightness.dark ? Colors.white10 : Colors.white.withOpacity(0.02), theme.brightness == Brightness.dark ? Colors.white12 : Colors.white.withOpacity(0.03)]),
+                gradient: isCurrent ? cardGradient : LinearGradient(colors: [theme.brightness == Brightness.dark ? Colors.white10 : Colors.white.withOpacitySafe(0.02), theme.brightness == Brightness.dark ? Colors.white12 : Colors.white.withOpacitySafe(0.03)]),
                 borderRadius: BorderRadius.circular(16.r),
-                border: isCurrent ? Border.all(color: cardColor.withOpacity(0.14), width: 1.4.w) : Border.all(color: Colors.transparent),
+                border: isCurrent ? Border.all(color: cardColor.withOpacitySafe(0.14), width: 1.4.w) : Border.all(color: Colors.transparent),
                 boxShadow: cardShadow,
               ),
               child: Column(
@@ -233,7 +234,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [Colors.white24, Colors.white10]),
+                            gradient: const LinearGradient(colors: [Colors.white24, Colors.white10]),
                             color: Colors.white24,
                             borderRadius: BorderRadius.circular(8.r),
                           ),
@@ -248,7 +249,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                             ],
                           ),
                         ),
-                      Spacer(),
+                      const Spacer(),
                       if (!isFree)
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
@@ -276,7 +277,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                   ),
                   SizedBox(height: 8.h),
 
-                  Container(height: 3.h, width: 56.w, decoration: BoxDecoration(gradient: LinearGradient(colors: [cardColor.withOpacity(0.95), cardColor.withOpacity(0.55)]), borderRadius: BorderRadius.circular(12.r))),
+                  Container(height: 3.h, width: 56.w, decoration: BoxDecoration(gradient: LinearGradient(colors: [cardColor.withOpacitySafe(0.95), cardColor.withOpacitySafe(0.55)]), borderRadius: BorderRadius.circular(12.r))),
                   SizedBox(height: 8.h),
 
                   Flexible(

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <rect width="1080" height="1920" fill="#FFFFFF" />
+  <text x="80" y="160" font-family="Poppins, sans-serif" font-size="32" fill="#333">Harika! Şimdi hedefini belirle.</text>
+  <g transform="translate(60,260)">
+    <rect x="0" y="0" width="960" height="120" rx="16" fill="#FFFFFF" stroke="#E6E8EB" />
+    <text x="36" y="72" font-family="Poppins, sans-serif" font-size="20" fill="#333">Kilo Vermek</text>
+  </g>
+  <g transform="translate(60,400)">
+    <rect x="0" y="0" width="960" height="120" rx="16" fill="#FFFFFF" stroke="#E6E8EB" />
+    <text x="36" y="72" font-family="Poppins, sans-serif" font-size="20" fill="#333">Kilo Korumak</text>
+  </g>
+  <g transform="translate(60,540)">
+    <rect x="0" y="0" width="960" height="120" rx="16" fill="#FFFFFF" stroke="#E6E8EB" />
+    <text x="36" y="72" font-family="Poppins, sans-serif" font-size="20" fill="#333">Kas Kazanmak</text>
+  </g>
+  <rect x="60" y="760" width="960" height="140" rx="16" fill="#F4F4F8" />
+  <text x="540" y="840" font-family="Poppins, sans-serif" font-size="16" fill="#70757A" text-anchor="middle">Günlük Kalori: [input]  •  Emin Değilim (Hesapla)</text>
+  <rect x="60" y="940" width="960" height="72" rx="12" fill="#7CB342" />
+  <text x="540" y="988" font-family="Poppins, sans-serif" font-size="18" fill="#fff" text-anchor="middle">Planımı Oluştur!</text>
+</svg>

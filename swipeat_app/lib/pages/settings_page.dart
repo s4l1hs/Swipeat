@@ -7,11 +7,13 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../utils/color_utils.dart';
 import '../l10n/app_localizations.dart';
 import '../locale_provider.dart';
 // Theme toggling removed; single-theme app. (main.dart no longer exports ThemeNotifier)
 import '../providers/user_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../screens/mandatory_profile.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -22,13 +24,9 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> with SingleTickerProviderStateMixin {
   bool _isSavingLanguage = false;
-  bool _isSavingNotifications = false;
-  String _currentTheme = 'DARK';
-  bool _isSavingTheme = false; 
   // ignore: unused_field
   bool _isLoadingProfile = false;
 
-  bool _notificationsEnabled = true;
   String _currentLanguageCode = 'en';
   String? _username; 
 
@@ -64,15 +62,11 @@ class _SettingsPageState extends State<SettingsPage> with SingleTickerProviderSt
     setState(() => _isLoadingProfile = true);
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedTheme = prefs.getString('theme_mode');
-      if (savedTheme != null) {
-        _currentTheme = savedTheme.toUpperCase();
-      }
+      // theme is fixed for Swipeat; we don't persist theme mode
 
       final token = await _getIdToken();
       if (token == null) {
-        // Not signed in, bail out gracefully.
-        if (mounted) _showErrorSnackBar(AppLocalizations.of(context)?.failedToLoadProfile ?? 'Not signed in');
+        // Not signed in — silently return without showing an error.
         return;
       }
 
@@ -80,79 +74,32 @@ class _SettingsPageState extends State<SettingsPage> with SingleTickerProviderSt
       final uri = Uri.parse("$backendBaseUrl/api/me");
       final response = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
 
-      if (response.statusCode == 200 && mounted) {
+  if (response.statusCode == 200 && mounted) {
         final profile = jsonDecode(response.body) as Map<String, dynamic>;
         final firebaseName = FirebaseAuth.instance.currentUser?.displayName;
         final backendName = (profile['name'] as String?) ?? '';
         final languageCode = (profile['language_code'] as String?) ?? 'en';
-        final notifications = (profile['notifications_enabled'] as bool?) ?? true;
-        final themePreference = (profile['theme_preference'] as String?) ?? 'DARK';
-
         setState(() {
           _currentLanguageCode = languageCode;
           _username = (firebaseName != null && firebaseName.isNotEmpty) ? firebaseName : (backendName.isNotEmpty ? backendName : null);
-          _notificationsEnabled = notifications;
-          if (savedTheme == null) _currentTheme = themePreference;
         });
 
-        Provider.of<LocaleProvider>(context, listen: false).setLocale(_currentLanguageCode);
+        if (mounted) {
+          Provider.of<LocaleProvider>(context, listen: false).setLocale(_currentLanguageCode);
+        }
       } else if (response.statusCode == 404) {
-        // No profile created yet; that's fine — user will be routed through mandatory profile flow elsewhere.
-        if (mounted) _showErrorSnackBar(AppLocalizations.of(context)?.failedToLoadProfile ?? 'Profile not found');
+        // No profile created yet; that's fine — user will be routed through profile flow elsewhere.
+        return;
       } else {
         throw Exception('Failed to load profile: ${response.statusCode}');
       }
     } catch (e) {
-      if (mounted) _showErrorSnackBar(AppLocalizations.of(context)?.failedToLoadProfile ?? "Failed to load profile");
+      // don't surface routine profile-load errors in UI; just log
+      debugPrint('Settings: failed to load profile: $e');
     } finally {
       if (mounted) setState(() => _isLoadingProfile = false);
     }
   }
-
-  Future<void> _saveThemePreference(String newTheme) async {
-    if (_isSavingTheme) return;
-    setState(() => _isSavingTheme = true);
-    final oldTheme = _currentTheme; // Hata olursa geri dönmek için
-    
-    if (mounted) setState(() => _currentTheme = newTheme);
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('theme_mode', newTheme.toUpperCase());
-    } catch (_) {
-    }
-    
-    try {
-      final token = await _getIdToken();
-      if (token == null) throw Exception("User not logged in");
-
-      final uri = Uri.parse("$backendBaseUrl/user/theme/");
-      final body = jsonEncode({'theme': newTheme}); // <-- changed to match backend Pydantic model
-      final response = await http.put(uri, headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json'
-      }, body: body);
-
-      if (response.statusCode != 200) {
-        debugPrint('Failed to save theme preference: ${response.statusCode} ${response.body}');
-        throw Exception('Failed to save theme preference');
-      }
-
-  // Theme changes are stored but the app uses a single theme by design.
-    } catch (e) {
-      if (mounted) {
-        _showErrorSnackBar("Tema tercihi kaydedilemedi: $e");
-        setState(() => _currentTheme = oldTheme);
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('theme_mode', oldTheme.toUpperCase());
-        } catch (_) {}
-      }
-    } finally {
-      if (mounted) setState(() => _isSavingTheme = false);
-    }
-  }
-
   Future<void> _saveLanguage(String langCode) async {
     if (_isSavingLanguage) return;
     setState(() => _isSavingLanguage = true);
@@ -162,36 +109,21 @@ class _SettingsPageState extends State<SettingsPage> with SingleTickerProviderSt
 
       final api = ApiService();
       await api.updateLanguage(token, langCode);
-      Provider.of<LocaleProvider>(context, listen: false).setLocale(langCode);
-      setState(() => _currentLanguageCode = langCode);
+      if (mounted) {
+        Provider.of<LocaleProvider>(context, listen: false).setLocale(langCode);
+        setState(() => _currentLanguageCode = langCode);
+      }
     } catch (e) {
-      if (mounted) _showErrorSnackBar(AppLocalizations.of(context)?.failedToSaveLanguage ?? "Failed to save language: $e");
+      if (mounted) {
+        final msg = AppLocalizations.of(context)?.failedToSaveLanguage ?? "Failed to save language: $e";
+        _showErrorSnackBar(msg);
+      }
     } finally {
       if (mounted) setState(() => _isSavingLanguage = false);
     }
   }
 
-  Future<void> _saveNotificationSetting(bool isEnabled) async {
-    if (_isSavingNotifications) return;
-    setState(() {
-      _notificationsEnabled = isEnabled;
-      _isSavingNotifications = true;
-    });
-    try {
-      final token = await _getIdToken();
-      if (token == null) throw Exception("User not logged in");
-
-      final api = ApiService();
-      await api.updateNotificationSetting(token, isEnabled);
-    } catch (e) {
-      if (mounted) {
-        _showErrorSnackBar(AppLocalizations.of(context)?.failedToSaveNotification ?? "Failed to save notification setting: $e");
-        setState(() => _notificationsEnabled = !isEnabled);
-      }
-    } finally {
-      if (mounted) setState(() => _isSavingNotifications = false);
-    }
-  }
+  // Notifications and appearance settings removed — Swipeat does not use push notifications or theme toggles.
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -236,15 +168,15 @@ class _SettingsPageState extends State<SettingsPage> with SingleTickerProviderSt
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [theme.colorScheme.primary.withOpacity(0.12), theme.colorScheme.secondary.withOpacity(0.06)],
+                colors: [theme.colorScheme.primary.withOpacitySafe(0.12), theme.colorScheme.secondary.withOpacitySafe(0.06)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
           ),
 
-          Positioned(top: -40.h, left: -24.w, child: _decorBlob(theme.colorScheme.primary.withOpacity(0.08), 180.w)),
-          Positioned(bottom: -80.h, right: -60.w, child: _decorBlob(theme.colorScheme.secondary.withOpacity(0.07), 260.w)),
+          Positioned(top: -40.h, left: -24.w, child: _decorBlob(theme.colorScheme.primary.withOpacitySafe(0.08), 180.w)),
+          Positioned(bottom: -80.h, right: -60.w, child: _decorBlob(theme.colorScheme.secondary.withOpacitySafe(0.07), 260.w)),
 
             ListView(
               padding: EdgeInsets.fromLTRB(18.w, 0.h, 18.w, 12.h),
@@ -257,14 +189,12 @@ class _SettingsPageState extends State<SettingsPage> with SingleTickerProviderSt
 
                 _buildCardSection(title: localizations.general, child: Column(children: [
                   _buildLanguageTile(localizations, theme),
-                  Divider(color: Colors.white12, height: 1, indent: 68),
-                  _buildThemeTile(localizations, theme),
-                  Divider(color: Colors.white12, height: 1, indent: 68),
-                  _buildNotificationsTile(localizations, theme),
                 ])),
                 SizedBox(height: 18.h),
                 _buildCardSection(title: localizations.account, child: Column(children: [
-                  Divider(color: Colors.white12, height: 1),
+                  const Divider(color: Colors.white12, height: 1),
+                  _buildEditProfileTile(localizations, theme),
+                  const Divider(color: Colors.white12, height: 1),
                   _buildSignOutTile(localizations, theme),
                 ])),
                 SizedBox(height: 28.h),
@@ -311,7 +241,7 @@ class _SettingsPageState extends State<SettingsPage> with SingleTickerProviderSt
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-      color: theme.colorScheme.surface.withOpacity(0.08),
+      color: theme.colorScheme.surface.withOpacitySafe(0.08),
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 16.w),
         child: Column(
@@ -352,7 +282,7 @@ class _SettingsPageState extends State<SettingsPage> with SingleTickerProviderSt
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(padding: EdgeInsets.only(left: 6.w, bottom: 8.h), child: Text(title.toUpperCase(), style: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.bold, letterSpacing: 1.2))),
       Card(
-        color: Theme.of(context).colorScheme.surface.withOpacity(0.06),
+        color: Theme.of(context).colorScheme.surface.withOpacitySafe(0.06),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
         child: Padding(padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h), child: child),
       )
@@ -361,46 +291,38 @@ class _SettingsPageState extends State<SettingsPage> with SingleTickerProviderSt
 
   Widget _buildLanguageTile(AppLocalizations localizations, ThemeData theme) {
     return ListTile(
-      leading: CircleAvatar(backgroundColor: theme.colorScheme.primary.withOpacity(0.12), child: Icon(Icons.language, color: theme.colorScheme.tertiary)),
+  leading: CircleAvatar(backgroundColor: theme.colorScheme.primary.withOpacitySafe(0.12), child: Icon(Icons.language, color: theme.colorScheme.tertiary)),
       title: Text(localizations.applicationLanguage),
       subtitle: Text(_supportedLanguages[_currentLanguageCode] ?? 'English'),
-      trailing: _isSavingLanguage ? SizedBox(width: 24.w, height: 24.w, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.keyboard_arrow_right, color: Colors.white70),
+      trailing: _isSavingLanguage ? SizedBox(width: 24.w, height: 24.w, child: const CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.keyboard_arrow_right, color: Colors.white70),
       onTap: () => _showLanguageBottomSheet(localizations, theme),
     );
   }
 
-  Widget _buildThemeTile(AppLocalizations localizations, ThemeData theme) {
-    final isDark = _currentTheme.toUpperCase() == 'DARK';
-    return SwitchListTile(
-      secondary: Padding(padding: const EdgeInsets.all(8.0), child: Icon(isDark ? Icons.dark_mode : Icons.light_mode, color: theme.colorScheme.tertiary)),
-      title: Text(localizations.theme),
-      subtitle: Text(isDark ? (localizations.darkMode) : (localizations.lightMode)),
-      value: isDark,
-      activeColor: theme.colorScheme.secondary,
-      onChanged: (enabled) {
-        final newTheme = enabled ? 'DARK' : 'LIGHT';
-        setState(() => _currentTheme = newTheme);
-        _saveThemePreference(newTheme);
-      },
-    );
-  }
-
-  Widget _buildNotificationsTile(AppLocalizations localizations, ThemeData theme) {
-    return SwitchListTile(
-      secondary: Padding(padding: const EdgeInsets.all(8.0), child: Icon(Icons.notifications_active_outlined, color: theme.colorScheme.tertiary)),
-      title: Text(localizations.notifications),
-      subtitle: Text(localizations.forAllAlarms),
-      value: _notificationsEnabled,
-      activeColor: theme.colorScheme.secondary,
-      onChanged: _isSavingNotifications ? null : (value) => _saveNotificationSetting(value),
-    );
-  }
+  // Theme and Notifications tiles removed — Swipeat uses a single theme and has no push notifications.
 
   Widget _buildSignOutTile(AppLocalizations localizations, ThemeData theme) {
     return ListTile(
       leading: Padding(padding: const EdgeInsets.all(8.0), child: Icon(Icons.logout, color: theme.colorScheme.secondary)),
       title: Text(localizations.signOut, style: TextStyle(color: theme.colorScheme.secondary, fontWeight: FontWeight.w600)),
       onTap: () => _showSignOutConfirmation(),
+    );
+  }
+
+  Widget _buildEditProfileTile(AppLocalizations localizations, ThemeData theme) {
+    return ListTile(
+      leading: Padding(padding: const EdgeInsets.all(8.0), child: Icon(Icons.person, color: theme.colorScheme.primary)),
+      title: Text('Profilimi Düzenle', style: TextStyle(fontWeight: FontWeight.w600)),
+      onTap: () async {
+        final token = await _getIdToken();
+        if (token == null) {
+          _showErrorSnackBar('Oturum açılmamış.');
+          return;
+        }
+        // Navigate to the optional mandatory profile screen so user can edit details
+        if (!mounted) return;
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => MandatoryProfileScreen(idToken: token, displayName: FirebaseAuth.instance.currentUser?.displayName)));
+      },
     );
   }
 
@@ -424,9 +346,9 @@ class _SettingsPageState extends State<SettingsPage> with SingleTickerProviderSt
               children: _supportedLanguages.entries.map((entry) {
                 final isSelected = entry.key == _currentLanguageCode;
                 final isLight = theme.brightness == Brightness.light;
-                final bgColor = isSelected
-                    ? theme.colorScheme.primary
-                    : (isLight ? theme.colorScheme.primary.withOpacity(0.12) : Colors.white10);
+        final bgColor = isSelected
+          ? theme.colorScheme.primary
+          : (isLight ? theme.colorScheme.primary.withOpacitySafe(0.12) : Colors.white10);
                 final txtColor = isSelected
                     ? Colors.white
                     : (isLight ? theme.colorScheme.primary : Colors.white70);

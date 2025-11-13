@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <rect width="1080" height="1920" fill="#FFFFFF" />
+  <rect x="40" y="80" width="1000" height="12" rx="6" fill="#F4F4F8" />
+  <rect x="40" y="72" width="320" height="12" rx="6" fill="#7CB342" />
+  <text x="80" y="140" font-family="Poppins, sans-serif" font-size="18" fill="#333">Lezzet Profilin Oluşturuluyor... 8/20</text>
+  <rect x="60" y="200" width="960" height="1320" rx="24" fill="#F4F4F8" stroke="#E6E8EB" />
+  <text x="540" y="840" font-family="Poppins, sans-serif" font-size="22" fill="#999" text-anchor="middle">Top Card (drag)</text>
+  <g transform="translate(0,1400)">
+    <circle cx="220" cy="120" r="48" fill="#FFFFFF" stroke="#E6E8EB" />
+    <text x="220" y="128" font-family="Poppins, sans-serif" font-size="12" fill="#333" text-anchor="middle">Undo</text>
+    <circle cx="540" cy="120" r="56" fill="#FF6B6B" />
+    <text x="540" y="128" font-family="Poppins, sans-serif" font-size="14" fill="#fff" text-anchor="middle">No</text>
+    <circle cx="860" cy="120" r="56" fill="#7CB342" />
+    <text x="860" y="128" font-family="Poppins, sans-serif" font-size="14" fill="#fff" text-anchor="middle">Yes</text>
+  </g>
+</svg>

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 // id generation doesn't require external package here
 import '../models/profile.dart';
-import 'swipe_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -40,9 +39,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       photos: _photosCtrl.text.trim().isEmpty ? [] : _photosCtrl.text.trim().split(',').map((s) => s.trim()).toList(),
       interests: _interestsCtrl.text.trim().isEmpty ? [] : _interestsCtrl.text.trim().split(',').map((s) => s.trim()).toList(),
     );
+    // Use the created profile minimally for now (silence analyzer warning).
+    // Later: persist this profile to backend or provider before navigating.
+    debugPrint('Onboarding created profile id=${profile.id}');
 
-    // For now navigate to swipe screen and pass this profile as "me".
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => SwipeScreen(me: profile)));
   }
 
   @override
