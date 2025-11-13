@@ -40,7 +40,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./swipeat.db")
+# Use a local sqlite file as a safe default when DATABASE_URL is not set or empty.
+# Per project configuration, prefer `maindb.db` instead of the old `swipeat.db`.
+DATABASE_URL = os.getenv("DATABASE_URL") or "sqlite:///./maindb.db"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -227,6 +229,29 @@ def get_next_candidates(limit: int = 20, uid: str = Depends(get_uid), db: Sessio
         q = q.order_by(ProfileORM.created_at.desc()).limit(limit)
         candidates = q.all()
         print(f"get_next_candidates: uid={uid} -> {len(candidates)} candidates")
+
+        # Development helper: if no candidates are found and DEMO_PROFILES is set,
+        # return a small set of demo food profiles so the frontend has something
+        # to show during local development. This does not persist any profiles
+        # to the database unless you explicitly POST /api/profiles.
+        if not candidates and os.getenv('DEMO_PROFILES', 'false').lower() in ('1', 'true', 'yes'):
+            now = datetime.now(timezone.utc)
+            demo = []
+            foods = ['Avocado', 'Apple', 'Chicken', 'Salad', 'Banana', 'Bread']
+            for i, name in enumerate(foods):
+                demo.append(ProfileOut(
+                    uid=f'food{i}',
+                    name=name,
+                    age=None,
+                    bio=f'Tasty {name}',
+                    photos=[],
+                    interests=[],
+                    created_at=now,
+                    updated_at=now,
+                ))
+            print(f"get_next_candidates: returning {len(demo)} demo profiles (DEMO_PROFILES enabled)")
+            return demo
+
         return [profile_to_out(c) for c in candidates]
     except Exception as e:
         # In case of unexpected errors (or missing DB objects), log and return empty list
