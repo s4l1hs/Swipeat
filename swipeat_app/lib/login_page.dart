@@ -234,14 +234,14 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                     ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
                                     blendMode: BlendMode.srcIn,
                                     child: const Text(
-                                      'Flow7',
+                                      'Swipeat',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: Colors.white),
                                     ),
                                   ),
                                   SizedBox(height: 6.h),
                                   Text(
-                                    'Weekly planner & scheduler',
+                                    'Eat with pleausure',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(fontSize: 13.sp, color: Colors.white70, fontStyle: FontStyle.italic),
                                   ),

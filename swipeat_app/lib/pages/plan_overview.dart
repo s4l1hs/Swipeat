@@ -24,21 +24,27 @@ class _PlanOverviewScreenState extends State<PlanOverviewScreen> {
           children: [
             SizedBox(
               height: 64.h,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: days.length,
-                itemBuilder: (ctx, i) {
+              child: Row(
+                children: List.generate(days.length, (i) {
                   final sel = i == selectedDay;
-                  return GestureDetector(
-                    onTap: () => setState(() => selectedDay = i),
-                    child: Container(
-                      margin: EdgeInsets.symmetric(horizontal: 8.w),
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
-                      decoration: BoxDecoration(color: sel ? Theme.of(context).colorScheme.primary : Colors.white, borderRadius: BorderRadius.circular(12.r), border: Border.all(color: Colors.grey.shade200)),
-                      child: Center(child: Text(days[i], style: TextStyle(color: sel ? Colors.white : Colors.black))),
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => selectedDay = i),
+                      child: Container(
+                        margin: EdgeInsets.symmetric(horizontal: 4.w),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
+                        decoration: BoxDecoration(
+                          color: sel ? Theme.of(context).colorScheme.primary : Colors.white,
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Center(
+                          child: Text(days[i], style: TextStyle(color: sel ? Colors.white : Colors.black, fontSize: 14.sp)),
+                        ),
+                      ),
                     ),
                   );
-                },
+                }),
               ),
             ),
             SizedBox(height: 12.h),
