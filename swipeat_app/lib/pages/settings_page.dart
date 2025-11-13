@@ -12,7 +12,6 @@ import '../l10n/app_localizations.dart';
 import '../locale_provider.dart';
 // Theme toggling removed; single-theme app. (main.dart no longer exports ThemeNotifier)
 import '../providers/user_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/mandatory_profile.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -61,8 +60,7 @@ class _SettingsPageState extends State<SettingsPage> with SingleTickerProviderSt
     if (!mounted) return;
     setState(() => _isLoadingProfile = true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      // theme is fixed for Swipeat; we don't persist theme mode
+  // theme is fixed for Swipeat; we don't persist theme mode
 
       final token = await _getIdToken();
       if (token == null) {

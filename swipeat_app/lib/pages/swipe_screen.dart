@@ -55,13 +55,15 @@ class _SwipeScreenState extends State<SwipeScreen> {
     }
 
     // fallback: generate some food items so swipe UI shows food cards (name + image)
+    // Fallback: simple food names. We intentionally do NOT reference or
+    // generate any asset images here — the UI renders emoji-only visuals.
     final foods = [
-      {'name': 'Avocado', 'photo': 'asset:assets/images/png/avocado.png'},
-      {'name': 'Apple', 'photo': 'asset:assets/images/png/apple.png'},
-      {'name': 'Chicken', 'photo': 'asset:assets/images/png/chicken.png'},
-      {'name': 'Salad', 'photo': 'asset:assets/images/png/salad.png'},
-      {'name': 'Banana', 'photo': 'asset:assets/images/png/banana.png'},
-      {'name': 'Bread', 'photo': 'asset:assets/images/png/bread.png'},
+      {'name': 'Avocado'},
+      {'name': 'Apple'},
+      {'name': 'Chicken'},
+      {'name': 'Salad'},
+      {'name': 'Banana'},
+      {'name': 'Bread'},
     ];
 
     final fallback = foods
@@ -72,7 +74,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
               name: e.value['name']!,
               age: null,
               bio: 'Tasty ${e.value['name']}',
-              photos: [e.value['photo']!],
+              photos: const [], // no image assets used
               interests: const [],
             ))
         .toList()

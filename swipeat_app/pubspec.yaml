@@ -40,6 +40,5 @@ dev_dependencies:
 flutter:
   assets:
     - assets/images/
-    - assets/images/png/
   generate: true
   uses-material-design: true
