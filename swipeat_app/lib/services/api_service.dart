@@ -30,18 +30,24 @@ class ChallengeLimitException implements Exception {
 
 
 class ApiService {
-  Map<String, String> _getAuthHeaders(String idToken) {
-    return {
+  final String baseUrl;
+  ApiService({String? base}) : baseUrl = base ?? (backendBaseUrl.isNotEmpty ? backendBaseUrl : 'http://127.0.0.1:8000');
+
+  Map<String, String> _getAuthHeaders(String? idToken) {
+    final headers = {
       'Content-Type': 'application/json; charset=UTF-8',
-      'Authorization': 'Bearer $idToken',
     };
+    if (idToken != null && idToken.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $idToken';
+    }
+    return headers;
   }
   
   dynamic _handleResponse(http.Response response) {
     final String responseBody = utf8.decode(response.bodyBytes);
-    
+
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (response.statusCode == 204) { // 204 No Content durumunda gövde boş olur.
+      if (response.statusCode == 204 || responseBody.isEmpty) { // 204 No Content durumunda gövde boş olur.
         return null;
       }
       return jsonDecode(responseBody);
@@ -50,7 +56,7 @@ class ApiService {
       if (responseBody.isNotEmpty) {
         try {
           final errorJson = jsonDecode(responseBody);
-          errorMessage = errorJson['detail'] ?? errorMessage;
+          errorMessage = errorJson['detail'] ?? errorJson['message'] ?? errorMessage;
         } catch (e) {
           errorMessage = responseBody;
         }
@@ -138,18 +144,30 @@ class ApiService {
 
   /// Fetch next candidate profiles for swiping. Requires an authenticated idToken.
   Future<List<Map<String, dynamic>>> getNextCandidates(String idToken, {int limit = 20}) async {
-    final uri = Uri.parse("$backendBaseUrl/api/profiles/next").replace(queryParameters: {'limit': limit.toString()});
+    final uri = Uri.parse("$baseUrl/api/profiles/next").replace(queryParameters: {'limit': limit.toString()});
     final response = await http.get(uri, headers: _getAuthHeaders(idToken));
     final data = _handleResponse(response);
     return List<Map<String, dynamic>>.from(data);
   }
 
   /// Send a swipe event (like/dislike) for a target profile id.
-  Future<void> swipeProfile(String idToken, String toUid, String direction) async {
-    final uri = Uri.parse("$backendBaseUrl/api/profiles/$toUid/swipe");
+  /// Returns parsed JSON (if any) to allow callers to inspect success.
+  Future<Map<String, dynamic>?> swipeProfile(String idToken, String toUid, String direction) async {
+    final uri = Uri.parse("$baseUrl/api/profiles/$toUid/swipe");
     final payload = jsonEncode({'direction': direction});
     final response = await http.post(uri, headers: _getAuthHeaders(idToken), body: payload);
-    _handleResponse(response);
+    final data = _handleResponse(response);
+    if (data == null) return null;
+    return Map<String, dynamic>.from(data);
+  }
+
+  /// Undo a swipe (DELETE). Returns parsed JSON map.
+  Future<Map<String, dynamic>?> undoSwipe(String idToken, String toUid) async {
+    final uri = Uri.parse("$baseUrl/api/profiles/$toUid/swipe");
+    final response = await http.delete(uri, headers: _getAuthHeaders(idToken));
+    final data = _handleResponse(response);
+    if (data == null) return null;
+    return Map<String, dynamic>.from(data);
   }
 
   Future<Map<String, String>> getTopics() async {

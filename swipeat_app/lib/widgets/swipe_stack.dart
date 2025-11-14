@@ -203,7 +203,7 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
               Positioned.fill(
                 child: Builder(builder: (ctx) {
                   final key = p.name.toLowerCase();
-                  final visual = _foodVisuals.containsKey(key) ? _foodVisuals[key]! : {'emoji': '🍽️', 'bg': Color(0xFFEEEEEE)};
+                  final visual = _foodVisuals.containsKey(key) ? _foodVisuals[key]! : {'emoji': '🍽️', 'bg': const Color(0xFFEEEEEE)};
                   final Color bg = visual['bg'] as Color;
                   final String emoji = visual['emoji'] as String;
                   return Container(
@@ -256,7 +256,7 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
                 ),
               ),
               // small decorative inner shadow / vignette
-                  Positioned.fill(
+                  const Positioned.fill(
                         child: IgnorePointer(
                           child: DecoratedBox(
                       decoration: BoxDecoration(

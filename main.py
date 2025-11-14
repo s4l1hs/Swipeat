@@ -280,6 +280,7 @@ def swipe_profile(to_uid: str, payload: SwipeRequest, uid: str = Depends(get_uid
     Record a swipe from the authenticated user to target user.
     direction: 'like' or 'dislike'
     """
+    print(f"swipe_profile: from={uid} to={to_uid} direction={payload.direction}")
     if uid == to_uid:
         raise HTTPException(status_code=400, detail="Cannot swipe on yourself")
     # ensure target exists; in dev we may receive placeholder UIDs from the client
@@ -302,10 +303,12 @@ def swipe_profile(to_uid: str, payload: SwipeRequest, uid: str = Depends(get_uid
         db.add(target)
         db.commit()
         db.refresh(target)
+        print(f"swipe_profile: created placeholder profile for {to_uid}")
 
     # check existing swipe
     existing = db.query(SwipeORM).filter(and_(SwipeORM.from_uid == uid, SwipeORM.to_uid == to_uid)).first()
     if existing:
+        print(f"swipe_profile: already swiped from={uid} to={to_uid}")
         return SwipeResult(ok=True, already_swiped=True)
 
     s = SwipeORM(
@@ -317,8 +320,30 @@ def swipe_profile(to_uid: str, payload: SwipeRequest, uid: str = Depends(get_uid
     )
     db.add(s)
     db.commit()
+    print(f"swipe_profile: recorded swipe id={s.id}")
     # Note: matching logic (mutual like) will be added later
     return SwipeResult(ok=True, already_swiped=False)
+
+
+# New endpoint: undo (delete) a swipe the current user made to to_uid
+@app.delete("/api/profiles/{to_uid}/swipe")
+def undo_swipe(to_uid: str, uid: str = Depends(get_uid), db: Session = Depends(get_db)):
+    """
+    Undo a swipe the authenticated user made to target user (delete the swipe record).
+    Returns {"ok": True, "deleted": bool}
+    """
+    try:
+        existing = db.query(SwipeORM).filter(and_(SwipeORM.from_uid == uid, SwipeORM.to_uid == to_uid)).first()
+        if not existing:
+            print(f"undo_swipe: no existing swipe from={uid} to={to_uid}")
+            return {"ok": True, "deleted": False}
+        db.delete(existing)
+        db.commit()
+        print(f"undo_swipe: deleted swipe id={existing.id} from={uid} to={to_uid}")
+        return {"ok": True, "deleted": True}
+    except Exception as e:
+        print(f"undo_swipe error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Health endpoint
 @app.get("/api/status")
