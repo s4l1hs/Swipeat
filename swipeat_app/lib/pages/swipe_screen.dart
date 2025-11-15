@@ -46,7 +46,7 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
    }
  
    // unified swipe handler (used by SwipeStack gestures and programmatic swipeTop)
-   Future<void> _performSwipe(Profile p, bool liked, {bool showSnack = true}) async {
+   Future<void> _performSwipe(Profile p, bool liked) async {
      // optimistic local update: remove from candidates and push to history
      _swipeHistory.add(_SwipedAction(p, liked));
      setState(() => candidates.remove(p));
@@ -70,18 +70,14 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
          _swipeHistory.removeLast();
        }
        setState(() => candidates.add(p));
-       // notify user
+       // notify user about network error
        ScaffoldMessenger.of(context).showSnackBar(
          SnackBar(content: Text('Network error — could not send swipe.')),
        );
        return;
      }
  
-     if (showSnack) {
-       ScaffoldMessenger.of(context).showSnackBar(
-         SnackBar(content: Text('${liked ? 'Liked' : 'Skipped'} ${p.name}')),
-       );
-     }
+    // NOTE: removed success SnackBar ("Liked"/"Skipped") per UX request.
    }
  
    // called from SwipeStack user swipes
@@ -94,19 +90,19 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
   // ask SwipeStack to animate restoreFromSide, then remove history + call backend undo.
   Future<void> _onUndoPressed() async {
     if (_swipeHistory.isEmpty) return;
-
+ 
     final last = _swipeHistory.last;
     final prof = last.profile;
     final fromRight = last.liked;
-
+ 
     // restore into parent list so SwipeStack sees it as top
     setState(() => candidates.add(prof));
     // give frame for SwipeStack.didUpdateWidget -> sync
     await Future.delayed(const Duration(milliseconds: 20));
-
+ 
     // animate using SwipeStack's method (same animation as gesture)
     await (_swipeKey.currentState as dynamic)?.restoreTopFromSide(prof, fromRight);
-
+ 
     // remove history and call backend undo
     _swipeHistory.removeLast();
     try {
@@ -118,9 +114,9 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
     } catch (e) {
       debugPrint('backend undo failed: $e');
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Restored ${prof.name}')));
-  }
+ 
+    // NOTE: removed success SnackBar ("Restored ...") per UX request.
+   }
  
    Future<void> _loadCandidates() async {
      try {
@@ -208,6 +204,45 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
      setState(() => candidates = fallback);
    }
  
+   // nicer action button used instead of plain ElevatedButton
+   final Set<String> _pressedButtons = {};
+   Widget _actionButton({
+     required String id,
+     required Gradient gradient,
+     required IconData icon,
+     required VoidCallback onTap,
+     double diameter = 64,
+     double iconSize = 28,
+     Color? fg = Colors.white,
+   }) {
+     final pressed = _pressedButtons.contains(id);
+     return GestureDetector(
+       onTapDown: (_) => setState(() => _pressedButtons.add(id)),
+       onTapUp: (_) {
+         setState(() => _pressedButtons.remove(id));
+         onTap();
+       },
+       onTapCancel: () => setState(() => _pressedButtons.remove(id)),
+       child: AnimatedScale(
+         scale: pressed ? 0.94 : 1.0,
+         duration: const Duration(milliseconds: 120),
+         curve: Curves.easeOut,
+         child: Container(
+           width: diameter.w,
+           height: diameter.w,
+           decoration: BoxDecoration(
+             gradient: gradient,
+             shape: BoxShape.circle,
+             boxShadow: [
+               BoxShadow(color: Colors.black26, blurRadius: 14, offset: const Offset(0, 8)),
+             ],
+           ),
+           child: Center(child: Icon(icon, color: fg, size: iconSize.w)),
+         ),
+       ),
+     );
+   }
+ 
    @override
    Widget build(BuildContext context) {
     final visibleItems = List<Profile>.from(candidates);
@@ -239,49 +274,35 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
                Row(
                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                  children: [
-                   // Left: red X -> act like left swipe (dislike)
-                   ElevatedButton(
-                     // DÜZELTME: Artık 'visibleItems.last' (görünen kart)
-                     // neyse onu hedef alarak eylemi tetikliyor.
-                     onPressed: visibleItems.isNotEmpty
-                        ? () {
-                            (_swipeKey.currentState as dynamic)?.swipeTop(false);
-                          }
-                         : null,
-                     style: ElevatedButton.styleFrom(
-                       shape: const CircleBorder(),
-                       backgroundColor: Colors.red,
-                       minimumSize: Size(56.w, 56.w),
-                     ),
-                     child: Icon(Icons.close, color: Colors.white, size: 28.w),
+                   // Left: red X -> nicer look
+                   _actionButton(
+                     id: 'dislike',
+                     gradient: const LinearGradient(colors: [Color(0xFFFF7A7A), Color(0xFFFF5252)]),
+                     icon: Icons.close,
+                     diameter: 64,
+                     iconSize: 28,
+                     onTap: visibleItems.isNotEmpty ? () => (_swipeKey.currentState as dynamic)?.swipeTop(false) : () {},
                    ),
  
-                   // Center: undo (Bu zaten doğru, _swipeHistory'i kontrol ediyor)
-                   ElevatedButton(
-                     onPressed: _swipeHistory.isNotEmpty ? () => _onUndoPressed() : null,
-                     // ... (bu butonun kalanı aynı)
-                     style: ElevatedButton.styleFrom(
-                       shape: const CircleBorder(),
-                       backgroundColor: Colors.grey.shade200,
-                       minimumSize: Size(56.w, 56.w),
-                       elevation: 0,
-                     ),
-                     child: Icon(Icons.undo, color: Colors.black87, size: 26.w),
+                   // Center: undo (subtle neutral style)
+                   _actionButton(
+                     id: 'undo',
+                     gradient: LinearGradient(colors: [Colors.grey.shade100, Colors.grey.shade200]),
+                     icon: Icons.undo,
+                     diameter: 56,
+                     iconSize: 26,
+                     fg: Colors.black87,
+                     onTap: _swipeHistory.isNotEmpty ? () => _onUndoPressed() : () {},
                    ),
  
-                   // Right: green heart -> act like right swipe (like)
-                   ElevatedButton(
-                     onPressed: visibleItems.isNotEmpty
-                        ? () {
-                            (_swipeKey.currentState as dynamic)?.swipeTop(true);
-                          }
-                         : null,
-                     style: ElevatedButton.styleFrom(
-                       shape: const CircleBorder(),
-                       backgroundColor: Colors.green,
-                       minimumSize: Size(56.w, 56.w),
-                     ),
-                     child: Icon(Icons.favorite, color: Colors.white, size: 26.w),
+                   // Right: like (heart)
+                   _actionButton(
+                     id: 'like',
+                     gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF6EE7B7), Color(0xFF34D399)]),
+                     icon: Icons.favorite,
+                     diameter: 64,
+                     iconSize: 26,
+                     onTap: visibleItems.isNotEmpty ? () => (_swipeKey.currentState as dynamic)?.swipeTop(true) : () {},
                    ),
                  ],
                ),
