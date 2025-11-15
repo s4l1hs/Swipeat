@@ -142,7 +142,6 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
          // prefer local fallback so UI shows food emojis & colors as intended.
          final hasReal = list.isNotEmpty && list.any((p) => !(p.name.startsWith('Candidate-') || p.name.startsWith('candidate-')));
          if (!hasReal) {
-           debugPrint('_loadCandidates: backend empty or placeholders only -> using local fallback');
            // fallback: explicit food names in preferred order (top = last element)
            final foods = [
              {'id': 'food0', 'name': 'Avocado'},

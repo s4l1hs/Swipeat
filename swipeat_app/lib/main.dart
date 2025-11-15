@@ -11,7 +11,7 @@ import 'package:provider/provider.dart';
 import 'l10n/app_localizations.dart';
 import 'locale_provider.dart';
 import 'providers/user_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+// shared_preferences removed — notifications handling deleted
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'auth_gate.dart';
 
@@ -44,7 +44,6 @@ void main() async {
   // Notifications and background message handlers are disabled by project
   // policy — we will not register FirebaseMessaging background handlers
   // or request notification permissions anywhere in the app.
-  debugPrint('Notifications disabled by project settings; skipping registration.');
 
   runApp(
     MultiProvider(
@@ -116,40 +115,8 @@ class MyApp extends StatelessWidget {
           home: child,
         );
       },
-      child: const FirstRunInitializer(child: AuthGate()),
+      child: const AuthGate(),
     );
   }
 }
 
-/// Widget that runs once after app start to request notification permission
-/// for first-time installs. It persists a 'notification_permission_requested'
-/// flag and the resulting 'notifications_enabled' boolean in SharedPreferences.
-class FirstRunInitializer extends StatefulWidget {
-  final Widget child;
-  const FirstRunInitializer({required this.child, super.key});
-
-  @override
-  State<FirstRunInitializer> createState() => _FirstRunInitializerState();
-}
-
-class _FirstRunInitializerState extends State<FirstRunInitializer> {
-  @override
-  void initState() {
-    super.initState();
-    // Intentionally do NOT request notification permission.
-    // Persist flags indicating notifications are disabled so other app logic
-    // relying on these preferences can behave accordingly.
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('notification_permission_requested', true);
-        await prefs.setBool('notifications_enabled', false);
-      } catch (e) {
-        debugPrint('FirstRunInitializer (no-notify) error: $e');
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
-}
