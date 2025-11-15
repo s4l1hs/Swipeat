@@ -24,176 +24,28 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
    late List<Profile> candidates;
  
    // API service instance
-   late ApiService _apiService;
+   late ApiService _api_service;
  
    // history of swiped items for undo
    final List<_SwipedAction> _swipeHistory = [];
- 
-   // IDs to temporarily hide from SwipeStack while overlay animation runs
-   final Set<String> _hiddenDuringAnim = {};
- 
-   // overlay animation controller + entry
-   OverlayEntry? _overlayEntry;
+
+  // SwipeStack key to call programmatic swipe/restore methods
+  final GlobalKey _swipeKey = GlobalKey();
 
    @override
    void initState() {
      super.initState();
      candidates = [];
-     _apiService = ApiService();
+     _api_service = ApiService();
      _loadCandidates();
    }
-
+ 
    @override
    void dispose() {
-     _removeOverlay();
-     super.dispose();
+    super.dispose();
    }
  
-   void _removeOverlay() {
-     final e = _overlayEntry;
-     if (e != null) {
-       try {
-         e.remove();
-       } catch (_) {}
-       _overlayEntry = null;
-     }
-   }
- 
-   Future<void> _animateSwipeOff(Profile p, bool toRight) async {
-     if (_overlayEntry != null) return;
-     final mq = MediaQuery.of(context);
-     final width = mq.size.width;
-     final cardWidth = width * 0.86;
-     final cardHeight = mq.size.height * 0.62;
-     final startX = 0.0;
-     final endX = (toRight ? width * 1.2 : -width * 1.2);
- 
-     final controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
-     final animX = Tween<double>(begin: startX, end: endX).animate(CurvedAnimation(parent: controller, curve: Curves.easeIn));
-     final animRot = Tween<double>(begin: 0.0, end: (toRight ? 0.25 : -0.25)).animate(CurvedAnimation(parent: controller, curve: Curves.easeIn));
- 
-     _overlayEntry = OverlayEntry(builder: (_) {
-       return Positioned.fill(
-         child: IgnorePointer(
-           ignoring: true,
-           child: AnimatedBuilder(
-             animation: controller,
-             builder: (_, __) {
-               return Transform.translate(
-                 offset: Offset(animX.value, 0),
-                 child: Center(
-                   child: Transform.rotate(
-                     angle: animRot.value,
-                     child: SizedBox(
-                       width: cardWidth,
-                       height: cardHeight,
-                       child: _buildAnimatedCard(p),
-                     ),
-                   ),
-                 ),
-               );
-             },
-           ),
-         ),
-       );
-     });
- 
-     Overlay.of(context).insert(_overlayEntry!);
-     try {
-       await controller.forward();
-     } finally {
-       // always dispose local controller and remove overlay
-       controller.dispose();
-       _removeOverlay();
-     }
-   }
- 
-   Future<void> _animateRestoreFromSide(Profile p, bool fromRight) async {
-     if (_overlayEntry != null) return;
-     final mq = MediaQuery.of(context);
-     final width = mq.size.width;
-     final cardWidth = width * 0.86;
-     final cardHeight = mq.size.height * 0.62;
-     final startX = (fromRight ? width * 1.2 : -width * 1.2);
-     final endX = 0.0;
- 
-     final controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
-     final animX = Tween<double>(begin: startX, end: endX).animate(CurvedAnimation(parent: controller, curve: Curves.easeOut));
-     final startRot = (fromRight ? 0.25 : -0.25);
-     final animRot = Tween<double>(begin: startRot, end: 0.0).animate(CurvedAnimation(parent: controller, curve: Curves.easeOut));
- 
-     _overlayEntry = OverlayEntry(builder: (_) {
-       return Positioned.fill(
-         child: IgnorePointer(
-           ignoring: true,
-           child: AnimatedBuilder(
-             animation: controller,
-             builder: (_, __) {
-               return Transform.translate(
-                 offset: Offset(animX.value, 0),
-                 child: Center(
-                   child: Transform.rotate(
-                     angle: animRot.value,
-                     child: SizedBox(
-                       width: cardWidth,
-                       height: cardHeight,
-                       child: _buildAnimatedCard(p),
-                     ),
-                   ),
-                 ),
-               );
-             },
-           ),
-         ),
-       );
-     });
- 
-     Overlay.of(context).insert(_overlayEntry!);
-     try {
-       await controller.forward();
-     } finally {
-       controller.dispose();
-       _removeOverlay();
-     }
-   }
- 
-   // Small helper to build the animated card UI used for overlay animation.
-   // Keep consistent with SwipeStack card visuals (emoji + background).
-   Widget _buildAnimatedCard(Profile p) {
-     // Per-food visuals mapping used elsewhere; fallback simple color/emoji
-     final visuals = <String, Map<String, dynamic>>{
-       'Avocado': {'emoji': '🥑', 'color': const Color(0xFF86C166)},
-       'Apple': {'emoji': '🍎', 'color': const Color(0xFFE53935)},
-       'Banana': {'emoji': '🍌', 'color': const Color(0xFFFFEB3B)},
-       'Bread': {'emoji': '🍞', 'color': const Color(0xFFD7A36E)},
-       'Chicken': {'emoji': '🍗', 'color': const Color(0xFFFFAB91)},
-       'Salad': {'emoji': '🥗', 'color': const Color(0xFF8BC34A)},
-     };
-     final v = visuals[p.name] ?? {'emoji': '🍽️', 'color': Colors.grey.shade300};
-     final emoji = v['emoji'] as String;
-     final color = v['color'] as Color;
- 
-     // Card sized approx same as in SwipeStack
-     final cardWidth = MediaQuery.of(context).size.width * 0.86;
-     final cardHeight = MediaQuery.of(context).size.height * 0.62;
- 
-     return Center(
-       child: Container(
-         width: cardWidth,
-         height: cardHeight,
-         decoration: BoxDecoration(
-           color: color,
-           borderRadius: BorderRadius.circular(16),
-           boxShadow: const [BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.12), blurRadius: 12, offset: Offset(0, 6))],
-         ),
-         child: Center(
-           child: Text(emoji, style: TextStyle(fontSize: 120.sp)),
-         ),
-       ),
-     );
-   }
- 
-   // unified swipe handler (used by UI & buttons)
+   // unified swipe handler (used by SwipeStack gestures and programmatic swipeTop)
    Future<void> _performSwipe(Profile p, bool liked, {bool showSnack = true}) async {
      // optimistic local update: remove from candidates and push to history
      _swipeHistory.add(_SwipedAction(p, liked));
@@ -205,9 +57,9 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
        if (user != null) {
          final token = await user.getIdToken();
          if (token != null && token.isNotEmpty) {
-           debugPrint('SwipeScreen: sending swipe to backend for ${p.id} liked=$liked');
-           await _apiService.swipeProfile(token, p.id, liked ? 'like' : 'dislike');
-           debugPrint('SwipeScreen: swipe sent for ${p.id} liked=$liked');
+          debugPrint('SwipeScreen: sending swipe to backend for ${p.id} liked=$liked');
+          await _api_service.swipeProfile(token, p.id, liked ? 'like' : 'dislike');
+          debugPrint('SwipeScreen: swipe sent for ${p.id} liked=$liked');
          }
        }
      } catch (e) {
@@ -238,74 +90,37 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
      _performSwipe(p, liked);
    }
  
-   // The previous _undoLastSwipe helper was removed because it's unused;
-   // use _undoButtonAction() for user-triggered undo or undoLastSwipeProgrammatic()
-   // for programmatic restores which already handle local restore + backend undo.
- 
-   // wrapper called by left/right buttons to animate then perform swipe (backend)
-   Future<void> _swipeButtonAction(bool liked) async {
-     if (candidates.isEmpty || _overlayEntry != null) return;
+  // Programmatic undo triggered from button: insert profile on top,
+  // ask SwipeStack to animate restoreFromSide, then remove history + call backend undo.
+  Future<void> _onUndoPressed() async {
+    if (_swipeHistory.isEmpty) return;
 
-     final top = candidates.last;
+    final last = _swipeHistory.last;
+    final prof = last.profile;
+    final fromRight = last.liked;
 
-     // hide underlying top card while overlay animates
-     setState(() => _hiddenDuringAnim.add(top.id));
+    // restore into parent list so SwipeStack sees it as top
+    setState(() => candidates.add(prof));
+    // give frame for SwipeStack.didUpdateWidget -> sync
+    await Future.delayed(const Duration(milliseconds: 20));
 
-     try {
-       // Animate off (with rotation)
-       await _animateSwipeOff(top, liked);
+    // animate using SwipeStack's method (same animation as gesture)
+    await (_swipeKey.currentState as dynamic)?.restoreTopFromSide(prof, fromRight);
 
-       // After animation finished -> perform removal + backend call
-       // This ensures the card does not remain visible in the center
-       await _performSwipe(top, liked);
-     } finally {
-       // Always remove hidden flag so stack can re-render (if card removed it's fine)
-       setState(() => _hiddenDuringAnim.remove(top.id));
-     }
-   }
- 
-   // wrapper for undo button: restore on top (hidden), animate from side above all, then unhide + backend undo
-   Future<void> _undoButtonAction() async {
-     if (_swipeHistory.isEmpty || _overlayEntry != null) return;
- 
-     final last = _swipeHistory.last; // peek
-     final prof = last.profile;
-     final fromRight = last.liked;
- 
-     // Restore into local list on top but keep it hidden while overlay animates
-     setState(() {
-       candidates.add(prof);
-       _hiddenDuringAnim.add(prof.id);
-     });
- 
-     // Animate card coming from the side (rotation returns to 0)
-     await _animateRestoreFromSide(prof, fromRight);
- 
-     // Unhide so SwipeStack shows the restored card on top
-     setState(() => _hiddenDuringAnim.remove(prof.id));
- 
-     // Remove history entry (we consider restored now)
-     _swipeHistory.removeLast();
- 
-     // Fire backend undo (non-blocking for UX)
-     try {
-       final user = FirebaseAuth.instance.currentUser;
-       final token = user != null ? await user.getIdToken() : null;
-       if (token != null && token.isNotEmpty) {
-         await _apiService.undoSwipe(token, prof.id);
-       }
-     } catch (e) {
-       debugPrint('backend undo failed: $e');
-     }
- 
-     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Restored ${prof.name}')));
-   }
- 
-   // simplified undo API for programmatic undo (used elsewhere if needed)
-   Future<void> undoLastSwipeProgrammatic() async {
-     if (_swipeHistory.isEmpty) return;
-     await _undoButtonAction();
-   }
+    // remove history and call backend undo
+    _swipeHistory.removeLast();
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      final token = user != null ? await user.getIdToken() : null;
+      if (token != null && token.isNotEmpty) {
+        await _api_service.undoSwipe(token, prof.id);
+      }
+    } catch (e) {
+      debugPrint('backend undo failed: $e');
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Restored ${prof.name}')));
+  }
  
    Future<void> _loadCandidates() async {
      try {
@@ -313,7 +128,7 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
        if (user != null) {
          final token = await user.getIdToken();
          if (token == null || token.isEmpty) throw Exception('No id token');
-         final raw = await _apiService.getNextCandidates(token, limit: 20);
+         final raw = await _api_service.getNextCandidates(token, limit: 20);
  
          // Map backend payload -> Profile list
          final list = raw
@@ -395,8 +210,7 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
  
    @override
    Widget build(BuildContext context) {
-     // Filter out hidden IDs so SwipeStack doesn't render them during overlay animation
-     final visibleItems = candidates.where((p) => !_hiddenDuringAnim.contains(p.id)).toList();
+    final visibleItems = List<Profile>.from(candidates);
  
      return Scaffold(
        // No AppBar title — keep screen focused on the cards only
@@ -413,21 +227,27 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
                  child: Center(
                    child: visibleItems.isEmpty
                        ? const Text('No more profiles')
-                       : SwipeStack(
-                           items: visibleItems,
-                           onSwipe: (p, liked) => _onSwipe(p, liked),
-                         ),
+                      : SwipeStack(
+                          key: _swipeKey,
+                          items: visibleItems,
+                          onSwipe: (p, liked) => _onSwipe(p, liked),
+                        ),
                  ),
                ),
  
-               // action buttons row: left X, undo, right heart
                SizedBox(height: 12.h),
                Row(
                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                  children: [
                    // Left: red X -> act like left swipe (dislike)
                    ElevatedButton(
-                     onPressed: candidates.isNotEmpty && _overlayEntry == null ? () => _swipeButtonAction(false) : null,
+                     // DÜZELTME: Artık 'visibleItems.last' (görünen kart)
+                     // neyse onu hedef alarak eylemi tetikliyor.
+                     onPressed: visibleItems.isNotEmpty
+                        ? () {
+                            (_swipeKey.currentState as dynamic)?.swipeTop(false);
+                          }
+                         : null,
                      style: ElevatedButton.styleFrom(
                        shape: const CircleBorder(),
                        backgroundColor: Colors.red,
@@ -436,9 +256,10 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
                      child: Icon(Icons.close, color: Colors.white, size: 28.w),
                    ),
  
-                   // Center: undo
+                   // Center: undo (Bu zaten doğru, _swipeHistory'i kontrol ediyor)
                    ElevatedButton(
-                     onPressed: _swipeHistory.isNotEmpty && _overlayEntry == null ? () => _undoButtonAction() : null,
+                     onPressed: _swipeHistory.isNotEmpty ? () => _onUndoPressed() : null,
+                     // ... (bu butonun kalanı aynı)
                      style: ElevatedButton.styleFrom(
                        shape: const CircleBorder(),
                        backgroundColor: Colors.grey.shade200,
@@ -450,7 +271,11 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
  
                    // Right: green heart -> act like right swipe (like)
                    ElevatedButton(
-                     onPressed: candidates.isNotEmpty && _overlayEntry == null ? () => _swipeButtonAction(true) : null,
+                     onPressed: visibleItems.isNotEmpty
+                        ? () {
+                            (_swipeKey.currentState as dynamic)?.swipeTop(true);
+                          }
+                         : null,
                      style: ElevatedButton.styleFrom(
                        shape: const CircleBorder(),
                        backgroundColor: Colors.green,

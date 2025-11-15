@@ -1,5 +1,7 @@
 import 'dart:math' as math;
+import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -69,6 +71,24 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
   }
 
   @override
+  void didUpdateWidget(covariant SwipeStack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync internal items list with parent-provided widget.items
+    if (!listEquals(oldWidget.items, widget.items)) {
+      setState(() {
+        items = List.of(widget.items);
+        // reset any transient state to avoid visual mismatch
+        _offset = Offset.zero;
+        _rotation = 0.0;
+        _swipeAnimation = null;
+        _isAnimatingOut = false;
+        _isReturnAnimation = false;
+        _pendingProfile = null;
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _swipeController.dispose();
     // ...existing dispose code...
@@ -106,6 +126,65 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
         });
       }
     }
+  }
+
+  /// Programmatic: animate the current top card out (true = right / like, false = left)
+  Future<void> swipeTop(bool liked) async {
+    if (items.isEmpty || _isAnimatingOut) return;
+    final top = items.last;
+    // Start swipe animation
+    _performSwipeAnim(top, liked);
+
+    // Await animation completion
+    final completer = Completer<void>();
+    void listener(AnimationStatus s) {
+      if (s == AnimationStatus.completed) completer.complete();
+    }
+
+    _swipeController.addStatusListener(listener);
+    await completer.future;
+    _swipeController.removeStatusListener(listener);
+  }
+
+  /// Programmatic: restore the top card visually by animating it from side -> center.
+  /// Parent must already have inserted the profile as the top item in widget.items.
+  Future<void> restoreTopFromSide(Profile p, bool fromRight) async {
+    if (items.isEmpty) return;
+    // Ensure the top item matches provided profile
+    if (items.last.id != p.id) return;
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final startDx = fromRight ? screenWidth * 1.2 : -screenWidth * 1.2;
+
+    setState(() {
+      _offset = Offset(startDx, 0);
+      final raw = _offset.dx / 300.0 * widget.rotationMultiplier;
+      _rotation = raw.clamp(-widget.maxRotation, widget.maxRotation).toDouble();
+      _isReturnAnimation = true;
+      _pendingProfile = p;
+    });
+
+    // animate from current offset -> center
+    final completer = Completer<void>();
+    void statusListener(AnimationStatus s) {
+      if (s == AnimationStatus.completed) completer.complete();
+    }
+
+    _swipeController.addStatusListener(statusListener);
+    _swipeController.duration = const Duration(milliseconds: 420);
+    _swipeAnimation = Tween<Offset>(begin: _offset, end: Offset.zero).animate(CurvedAnimation(parent: _swipeController, curve: Curves.easeOut))
+      ..addListener(() {
+        setState(() {
+          _offset = _swipeAnimation!.value;
+          final raw = _offset.dx / 300.0 * widget.rotationMultiplier;
+          _rotation = raw.clamp(-widget.maxRotation, widget.maxRotation).toDouble();
+        });
+      });
+
+    _swipeController.reset();
+    _swipeController.forward();
+    await completer.future;
+    _swipeController.removeStatusListener(statusListener);
   }
 
   void _animateBackToCenter() {
