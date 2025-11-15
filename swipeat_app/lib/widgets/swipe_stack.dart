@@ -19,9 +19,21 @@ const Map<String, Map<String, dynamic>> _foodVisuals = {
 
 typedef OnSwipe = void Function(Profile profile, bool liked);
 
+class SwipeStackController {
+  _SwipeStackState? _state;
+
+  Future<void> swipeTop(bool liked) => _state?.swipeTop(liked) ?? Future.value();
+  Future<void> restoreTopFromSide(Profile p, bool fromRight) =>
+      _state?.restoreTopFromSide(p, fromRight) ?? Future.value();
+
+  // Optional: allow manual detach
+  void detach() => _state = null;
+}
+
 class SwipeStack extends StatefulWidget {
   final List<Profile> items;
   final OnSwipe onSwipe;
+  final SwipeStackController? controller;
   final int maxVisible;
   // Fraction of the width a card must be dragged to count as a swipe (0..1)
   final double swipeThreshold;
@@ -33,6 +45,7 @@ class SwipeStack extends StatefulWidget {
   const SwipeStack({
     required this.items,
     required this.onSwipe,
+    this.controller,
     this.maxVisible = 3,
     this.swipeThreshold = 0.25,
     this.rotationMultiplier = 0.4,
@@ -59,11 +72,15 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
   bool _pendingLike = false;
   Profile? _pendingProfile;
   bool _isReturnAnimation = false;
+  bool _isWaitingForUndo = false;
 
   @override
   void initState() {
     super.initState();
     items = List.of(widget.items);
+
+    // attach controller -> state link so external callers can use controller
+    if (widget.controller != null) widget.controller!._state = this;
 
     // Slightly slower swipe animation for a more aesthetic feel
     _swipeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
@@ -75,21 +92,37 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
     super.didUpdateWidget(oldWidget);
     // Sync internal items list with parent-provided widget.items
     if (!listEquals(oldWidget.items, widget.items)) {
+      final bool itemWasAdded = oldWidget.items.length < widget.items.length;
+
       setState(() {
+        // 1. Listeyi her zaman senkronize et.
         items = List.of(widget.items);
-        // reset any transient state to avoid visual mismatch
-        _offset = Offset.zero;
-        _rotation = 0.0;
-        _swipeAnimation = null;
-        _isAnimatingOut = false;
-        _isReturnAnimation = false;
-        _pendingProfile = null;
+
+        // 2. DÜZELTME:
+        // EĞER bu bir Geri Al İSE (öğe eklendiyse):
+        if (itemWasAdded) {
+          // Kartın 0,0'da parlamaması için 'bekle' bayrağını kaldır.
+          _isWaitingForUndo = true;
+        } 
+        // EĞER bu bir Geri Al DEĞİLSE (kaydırma ise):
+        else {
+          // Durumu normal şekilde sıfırla.
+          _offset = Offset.zero;
+          _rotation = 0.0;
+          _swipeAnimation = null;
+          _isAnimatingOut = false;
+          _isReturnAnimation = false;
+          _pendingProfile = null;
+          _isWaitingForUndo = false; // (Burada da false olduğundan emin ol)
+        }
       });
     }
   }
 
   @override
   void dispose() {
+    // detach controller reference
+    if (widget.controller != null) widget.controller!._state = null;
     _swipeController.dispose();
     // ...existing dispose code...
     super.dispose();
@@ -156,13 +189,15 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
     final screenWidth = MediaQuery.of(context).size.width;
     final startDx = fromRight ? screenWidth * 1.2 : -screenWidth * 1.2;
 
+    _offset = Offset(startDx, 0);
+    final raw = _offset.dx / 300.0 * widget.rotationMultiplier;
+    _rotation = raw.clamp(-widget.maxRotation, widget.maxRotation).toDouble();
+    _isReturnAnimation = true;
+    _pendingProfile = p;
+
     setState(() {
-      _offset = Offset(startDx, 0);
-      final raw = _offset.dx / 300.0 * widget.rotationMultiplier;
-      _rotation = raw.clamp(-widget.maxRotation, widget.maxRotation).toDouble();
-      _isReturnAnimation = true;
-      _pendingProfile = p;
-    });
+      _isWaitingForUndo = false;
+    });  
 
     // animate from current offset -> center
     final completer = Completer<void>();
@@ -174,11 +209,9 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
     _swipeController.duration = const Duration(milliseconds: 420);
     _swipeAnimation = Tween<Offset>(begin: _offset, end: Offset.zero).animate(CurvedAnimation(parent: _swipeController, curve: Curves.easeOut))
       ..addListener(() {
-        setState(() {
           _offset = _swipeAnimation!.value;
           final raw = _offset.dx / 300.0 * widget.rotationMultiplier;
           _rotation = raw.clamp(-widget.maxRotation, widget.maxRotation).toDouble();
-        });
       });
 
     _swipeController.reset();
@@ -193,11 +226,9 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
     _swipeController.duration = const Duration(milliseconds: 420);
     _swipeAnimation = Tween<Offset>(begin: _offset, end: Offset.zero).animate(CurvedAnimation(parent: _swipeController, curve: Curves.easeOut))
       ..addListener(() {
-        setState(() {
           _offset = _swipeAnimation!.value;
           final raw = _offset.dx / 300.0 * widget.rotationMultiplier;
           _rotation = (raw.clamp(-widget.maxRotation, widget.maxRotation)).toDouble();
-        });
       });
     _swipeController.reset();
     _swipeController.forward();
@@ -215,12 +246,9 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
     final end = Offset(endX, 0); // Y = 0 fixed
     _swipeAnimation = Tween<Offset>(begin: begin, end: end).animate(CurvedAnimation(parent: _swipeController, curve: Curves.easeOutCubic))
       ..addListener(() {
-        setState(() {
           _offset = _swipeAnimation!.value;
-          // rotation clamped
           final raw = _offset.dx / 300.0 * widget.rotationMultiplier;
           _rotation = (raw.clamp(-widget.maxRotation, widget.maxRotation)).toDouble();
-        });
       });
     _pendingLike = liked;
     _pendingProfile = top;
@@ -271,6 +299,9 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
         width: cardWidth,
         height: cardHeight,
         child: Card(
+          // stable key per profile prevents Flutter from reusing widgets between different cards
+          // which caused the temporary wrong visual during undo animations
+          key: ValueKey(p.id),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
           elevation: 12,
           clipBehavior: Clip.hardEdge,
@@ -373,34 +404,42 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
               // build stack
               for (var i = 0; i < items.length; i++)
                 if (i >= items.length - visible) ...[ // show only last N
-                  Builder(builder: (ctx) {
+                  Builder(key: ValueKey(items[i].id), builder: (ctx) {
                     final depth = i - (items.length - visible);
                     // keep all cards same size for a uniform look
                     final translate = 8.0 * depth; // small stacking offset
                     final isTop = i == items.length - 1;
                     final child = _buildCard(items[i], isTop: isTop, cardWidth: baseWidth, cardHeight: baseHeight, translate: translate);
                     if (isTop) {
-                      return RawGestureDetector(
-                        gestures: <Type, GestureRecognizerFactory>{
-                          HorizontalDragGestureRecognizer:
-                              GestureRecognizerFactoryWithHandlers<HorizontalDragGestureRecognizer>(
-                            () => HorizontalDragGestureRecognizer(),
-                            (HorizontalDragGestureRecognizer instance) {
-                              instance.onStart = _onHorizontalDragStart;
-                              instance.onUpdate = _onHorizontalDragUpdate;
-                              instance.onEnd = _onHorizontalDragEnd;
+                      if (_isWaitingForUndo) {
+                        return const SizedBox.shrink(); // Glitch'i engeller
+                      }
+                      return AnimatedBuilder(
+                        animation: _swipeController,
+                        builder: (context, staticChild) {
+                          return RawGestureDetector(
+                            gestures: <Type, GestureRecognizerFactory>{
+                              HorizontalDragGestureRecognizer:
+                                  GestureRecognizerFactoryWithHandlers<HorizontalDragGestureRecognizer>(
+                                () => HorizontalDragGestureRecognizer(),
+                                (HorizontalDragGestureRecognizer instance) {
+                                  instance.onStart = _onHorizontalDragStart;
+                                  instance.onUpdate = _onHorizontalDragUpdate;
+                                  instance.onEnd = _onHorizontalDragEnd;
+                                },
+                              ),
                             },
-                          ),
+                            behavior: HitTestBehavior.translucent,
+                            child: Transform.translate(
+                              offset: Offset(_offset.dx, 0),
+                              child: Transform.rotate(
+                                angle: _rotation,
+                                child: staticChild, // 'child' yerine 'staticChild' kullan
+                              ),
+                            ),
+                          );
                         },
-                        behavior: HitTestBehavior.translucent,
-                        child: Transform.translate(
-                          offset: Offset(_offset.dx, 0),
-                          child: Transform.rotate(
-                            // _rotation already contains the clamped rotation in radians
-                            angle: _rotation,
-                            child: child,
-                          ),
-                        ),
+                        child: child, // _buildCard'ı buraya 'child' olarak ver
                       );
                     }
                     return child;
