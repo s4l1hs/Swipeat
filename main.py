@@ -7,7 +7,20 @@ import firebase_admin
 from firebase_admin import credentials, auth as firebase_auth
 from pathlib import Path
 import glob
-import os
+
+# Import firebase_admin defensively so the app can run in environments where the
+# package isn't installed (development machines). If it's absent, we provide
+# an explicit no-auth development fallback controlled via ALLOW_NOAUTH=1.
+try:
+    import firebase_admin
+    from firebase_admin import credentials, auth as firebase_auth
+    _FIREBASE_AVAILABLE = True
+except Exception:
+    firebase_admin = None
+    firebase_auth = None
+    credentials = None
+    _FIREBASE_AVAILABLE = False
+    print("Warning: firebase_admin package not available. To enable auth, install firebase-admin or set ALLOW_NOAUTH=1 for dev.")
 
 # Initialize Firebase Admin SDK using service account JSON if available.
 # Prefer the standard environment variable GOOGLE_APPLICATION_CREDENTIALS (or
@@ -21,7 +34,7 @@ if not cred_path:
     if matches:
         cred_path = str(matches[0])
 
-if cred_path:
+if _FIREBASE_AVAILABLE and cred_path:
     try:
         if not firebase_admin._apps:
             cred = credentials.Certificate(cred_path)
@@ -29,6 +42,8 @@ if cred_path:
     except Exception as e:
         # If credentials are missing or invalid, log and proceed — get_uid will fail to verify tokens.
         print(f"Firebase admin init error: {e}")
+elif not _FIREBASE_AVAILABLE:
+    print("No Firebase Admin SDK available; running in no-auth mode unless ALLOW_NOAUTH is unset.")
 else:
     print("No Firebase service account found (set GOOGLE_APPLICATION_CREDENTIALS). Skipping admin init.")
 
@@ -47,11 +62,6 @@ DATABASE_URL = os.getenv("DATABASE_URL") or "sqlite:///./maindb.db"
 # Demo profiles flag: if DEMO_PROFILES env var is explicitly set, respect it.
 # Otherwise, enable demo profiles automatically when running against a local
 # sqlite database (convenient for developer machines with maindb.db).
-_demo_env = os.getenv('DEMO_PROFILES')
-if _demo_env is None:
-    DEMO_PROFILES = DATABASE_URL.startswith('sqlite:')
-else:
-    DEMO_PROFILES = _demo_env.lower() in ('1', 'true', 'yes')
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
@@ -122,6 +132,10 @@ def get_uid(authorization: Optional[str] = Header(None)) -> str:
     Verify Authorization: Bearer <idToken> using Firebase Admin SDK and return stable uid.
     Raises 401 on missing/invalid token.
     """
+    # If Firebase Admin SDK isn't available, support a developer-friendly
+    # fallback when ALLOW_NOAUTH=1 is set in the environment. In that mode,
+    # the caller may pass a Bearer token whose value is used as the uid.
+    allow_noauth = os.getenv("ALLOW_NOAUTH") == "1"
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
     parts = authorization.split()
@@ -129,6 +143,12 @@ def get_uid(authorization: Optional[str] = Header(None)) -> str:
         raise HTTPException(status_code=401, detail="Invalid Authorization header")
 
     id_token = parts[1]
+    if not _FIREBASE_AVAILABLE:
+        if allow_noauth:
+            # Treat the token as the uid directly (DEV ONLY)
+            return id_token
+        raise HTTPException(status_code=503, detail="Firebase Admin SDK not available on server; set ALLOW_NOAUTH=1 for dev fallback or install firebase-admin package")
+
     try:
         decoded = firebase_auth.verify_id_token(id_token)
     except Exception as e:
@@ -242,7 +262,7 @@ def get_next_candidates(limit: int = 20, uid: str = Depends(get_uid), db: Sessio
         # return a small set of demo food profiles so the frontend has something
         # to show during local development. This does not persist any profiles
         # to the database unless you explicitly POST /api/profiles.
-        if not candidates and DEMO_PROFILES:
+        if not candidates:
             now = datetime.now(timezone.utc)
             demo = []
             foods = ['Avocado', 'Apple', 'Chicken', 'Salad', 'Banana', 'Bread']

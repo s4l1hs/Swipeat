@@ -214,7 +214,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                     gradient: LinearGradient(colors: [theme.colorScheme.secondary, theme.colorScheme.primary]),
                                     boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 20.r, offset: Offset(0, 8.h))],
                                   ),
-                                  child: Icon(Icons.calendar_month_outlined, size: 44.sp, color: Colors.white),
+                                  // replaced calendar icon with avocado emoji for friendlier look
+                                  child: Center(
+                                    child: Text(
+                                      '🥑',
+                                      style: TextStyle(fontSize: 56.sp),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),

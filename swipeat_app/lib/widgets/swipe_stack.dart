@@ -299,9 +299,6 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
         width: cardWidth,
         height: cardHeight,
         child: Card(
-          // stable key per profile prevents Flutter from reusing widgets between different cards
-          // which caused the temporary wrong visual during undo animations
-          key: ValueKey(p.id),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
           elevation: 12,
           clipBehavior: Clip.hardEdge,
@@ -404,7 +401,7 @@ class _SwipeStackState extends State<SwipeStack> with SingleTickerProviderStateM
               // build stack
               for (var i = 0; i < items.length; i++)
                 if (i >= items.length - visible) ...[ // show only last N
-                  Builder(key: ValueKey(items[i].id), builder: (ctx) {
+                  Builder(key: ValueKey('${items[i].id}-$i'), builder: (ctx) {
                     final depth = i - (items.length - visible);
                     // keep all cards same size for a uniform look
                     final translate = 8.0 * depth; // small stacking offset

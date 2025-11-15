@@ -206,25 +206,34 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
  
    // nicer action button used instead of plain ElevatedButton
    final Set<String> _pressedButtons = {};
+  bool _actionInProgress = false;
    Widget _actionButton({
      required String id,
      required Gradient gradient,
      required IconData icon,
-     required VoidCallback onTap,
+    required VoidCallback onTap,
+    bool enabled = true,
      double diameter = 64,
      double iconSize = 28,
      Color? fg = Colors.white,
    }) {
      final pressed = _pressedButtons.contains(id);
      return GestureDetector(
-       onTapDown: (_) => setState(() => _pressedButtons.add(id)),
-       onTapUp: (_) {
-         setState(() => _pressedButtons.remove(id));
-         onTap();
-       },
-       onTapCancel: () => setState(() => _pressedButtons.remove(id)),
+      onTapDown: (_) {
+        if (!enabled) return;
+        setState(() => _pressedButtons.add(id));
+      },
+      onTapUp: (_) {
+        if (!enabled) return;
+        setState(() => _pressedButtons.remove(id));
+        onTap();
+      },
+      onTapCancel: () {
+        if (!enabled) return;
+        setState(() => _pressedButtons.remove(id));
+      },
        child: AnimatedScale(
-         scale: pressed ? 0.94 : 1.0,
+        scale: pressed ? 0.94 : 1.0,
          duration: const Duration(milliseconds: 120),
          curve: Curves.easeOut,
          child: Container(
@@ -281,7 +290,19 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
                      icon: Icons.close,
                      diameter: 64,
                      iconSize: 28,
-                     onTap: visibleItems.isNotEmpty ? () => (_swipeKey.currentState as dynamic)?.swipeTop(false) : () {},
+                     enabled: !_actionInProgress && visibleItems.isNotEmpty,
+                     onTap: visibleItems.isNotEmpty
+                         ? () async {
+                             if (_actionInProgress) return;
+                             setState(() => _actionInProgress = true);
+                             try {
+                               await (_swipeKey.currentState as dynamic)?.swipeTop(false);
+                               // also ensure backend call is triggered by onSwipe handler from SwipeStack
+                             } finally {
+                               setState(() => _actionInProgress = false);
+                             }
+                           }
+                         : () {},
                    ),
  
                    // Center: undo (subtle neutral style)
@@ -292,7 +313,18 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
                      diameter: 56,
                      iconSize: 26,
                      fg: Colors.black87,
-                     onTap: _swipeHistory.isNotEmpty ? () => _onUndoPressed() : () {},
+                     enabled: !_actionInProgress && _swipeHistory.isNotEmpty,
+                     onTap: _swipeHistory.isNotEmpty
+                         ? () async {
+                             if (_actionInProgress) return;
+                             setState(() => _actionInProgress = true);
+                             try {
+                               await _onUndoPressed();
+                             } finally {
+                               setState(() => _actionInProgress = false);
+                             }
+                           }
+                         : () {},
                    ),
  
                    // Right: like (heart)
@@ -302,7 +334,18 @@ class _SwipeScreenState extends State<SwipeScreen> with TickerProviderStateMixin
                      icon: Icons.favorite,
                      diameter: 64,
                      iconSize: 26,
-                     onTap: visibleItems.isNotEmpty ? () => (_swipeKey.currentState as dynamic)?.swipeTop(true) : () {},
+                     enabled: !_actionInProgress && visibleItems.isNotEmpty,
+                     onTap: visibleItems.isNotEmpty
+                         ? () async {
+                             if (_actionInProgress) return;
+                             setState(() => _actionInProgress = true);
+                             try {
+                               await (_swipeKey.currentState as dynamic)?.swipeTop(true);
+                             } finally {
+                               setState(() => _actionInProgress = false);
+                             }
+                           }
+                         : () {},
                    ),
                  ],
                ),
