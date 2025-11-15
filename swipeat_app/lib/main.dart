@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+// Notifications disabled for this project — we do not request permissions
+// or register background handlers. Keep firebase_messaging out to avoid
+// prompting users for notification permissions.
 import 'firebase_options.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/services.dart';
@@ -13,23 +15,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'auth_gate.dart';
 
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  try {
-    if (kIsWeb) {
-      final opts = DefaultFirebaseOptions.currentPlatform;
-      if (opts.apiKey.isEmpty || opts.appId.isEmpty) {
-        debugPrint('Skipping Firebase init in background handler: firebase options empty for web.');
-      } else {
-        await Firebase.initializeApp(options: opts);
-      }
-    } else {
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    }
-  } catch (e) {
-    debugPrint('Background Firebase init error: $e');
-  }
-  debugPrint('Background message received: ${message.messageId}');
-}
+// Background message handling intentionally disabled. We do not run
+// background push/message logic in this app.
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,14 +41,10 @@ void main() async {
     debugPrint('Firebase initialize error: $e');
   }
 
-  // Register background handler only if Firebase is configured (avoids web errors)
-  final optsAfter = DefaultFirebaseOptions.currentPlatform;
-  final firebaseConfiguredAfter = !(kIsWeb && (optsAfter.apiKey.isEmpty || optsAfter.appId.isEmpty));
-  if (firebaseConfiguredAfter) {
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  } else {
-    debugPrint('Not registering FirebaseMessaging.onBackgroundMessage: Firebase not configured for web.');
-  }
+  // Notifications and background message handlers are disabled by project
+  // policy — we will not register FirebaseMessaging background handlers
+  // or request notification permissions anywhere in the app.
+  debugPrint('Notifications disabled by project settings; skipping registration.');
 
   runApp(
     MultiProvider(
@@ -153,51 +136,18 @@ class _FirstRunInitializerState extends State<FirstRunInitializer> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRequestPermission());
-  }
-
-  Future<void> _maybeRequestPermission() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final alreadyAsked = prefs.getBool('notification_permission_requested') ?? false;
-      if (alreadyAsked) return;
-
-      // Mark as asked so we don't repeatedly prompt on subsequent launches.
-      await prefs.setBool('notification_permission_requested', true);
-
-      // Request permission from FCM. We don't block startup on this.
-      // Guard FirebaseMessaging usage: if Firebase wasn't initialized (common in
-      // web dev when firebase_options.dart has placeholders), skip calling
-      // FirebaseMessaging.instance which throws a '[core/no-app]' exception.
-      final opts = DefaultFirebaseOptions.currentPlatform;
-      final firebaseConfigured = !(kIsWeb && (opts.apiKey.isEmpty || opts.appId.isEmpty));
-      if (!firebaseConfigured) {
-        debugPrint('Skipping FirebaseMessaging permission request: Firebase not configured for web.');
-        await prefs.setBool('notifications_enabled', false);
-        return;
-      }
-
+    // Intentionally do NOT request notification permission.
+    // Persist flags indicating notifications are disabled so other app logic
+    // relying on these preferences can behave accordingly.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
-        final settings = await FirebaseMessaging.instance.requestPermission(
-          alert: true,
-          announcement: false,
-          badge: true,
-          carPlay: false,
-          criticalAlert: false,
-          provisional: false,
-          sound: true,
-        );
-        final allowed = (settings.authorizationStatus == AuthorizationStatus.authorized) || (settings.authorizationStatus == AuthorizationStatus.provisional);
-        await prefs.setBool('notifications_enabled', allowed);
-      } catch (e) {
-        // Some platforms may throw when calling requestPermission; fall back to not enabled.
-        debugPrint('FirebaseMessaging requestPermission error: $e');
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('notification_permission_requested', true);
         await prefs.setBool('notifications_enabled', false);
+      } catch (e) {
+        debugPrint('FirstRunInitializer (no-notify) error: $e');
       }
-    } catch (e) {
-      // ignore errors silently; permission prompt is non-critical
-      debugPrint('FirstRunInitializer error: $e');
-    }
+    });
   }
 
   @override
